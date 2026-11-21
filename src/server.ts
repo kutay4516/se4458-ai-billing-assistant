@@ -1,0 +1,161 @@
+import "dotenv/config";
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import jwt from "@fastify/jwt";
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
+import { z } from "zod";
+import { readFile } from "node:fs/promises";
+import pg from "pg";
+import { BillingStore } from "./billing/store.js";
+import { PostgresBillingStore } from "./billing/postgresStore.js";
+import { runLiveAgent } from "./agent/llm.js";
+
+export function buildServer() {
+  const app = Fastify({ logger: true });
+  const memoryStore = new BillingStore();
+  memoryStore.addUsage({ subscriberNo: "1001", month: 4, year: 2025, usageType: "Phone", amount: 1200 });
+  memoryStore.addUsage({ subscriberNo: "1001", month: 4, year: 2025, usageType: "Internet", amount: 35000 });
+  const store = process.env.DATABASE_URL
+    ? new PostgresBillingStore(new pg.Pool({ connectionString: process.env.DATABASE_URL }))
+    : memoryStore;
+
+  app.register(cors, { origin: true });
+  app.register(jwt, { secret: process.env.JWT_SECRET ?? "development-only-secret" });
+  app.register(swagger, { openapi: { info: { title: "Mobile Provider Billing API", version: "1.0.0" } } });
+  app.register(swaggerUi, { routePrefix: "/docs" });
+
+  const monthSchema = z.coerce.number().int().min(1).max(12);
+  const yearSchema = z.coerce.number().int().min(2000).max(2100);
+
+  const subscriberOnly = async (request: any, reply: any) => {
+    try {
+      await request.jwtVerify();
+      const subscriberNo = (request as any).body?.subscriberNo ?? (request.query as any)?.subscriberNo;
+      const principal = (request as any).user as { subscriberNo?: string };
+      if (subscriberNo && principal.subscriberNo !== subscriberNo) {
+        return reply.status(403).send({ error: "SUBSCRIBER_MISMATCH" });
+      }
+    } catch {
+      return reply.status(401).send({ error: "UNAUTHORIZED" });
+    }
+  };
+
+  app.get("/health", () => ({ status: "ok", service: "billing-api" }));
+
+  app.get("/api/v1/bill", async (request, reply) => {
+    const query = z.object({ subscriberNo: z.string().min(1), month: monthSchema, year: yearSchema }).safeParse(request.query);
+    if (!query.success) return reply.status(400).send({ error: "VALIDATION_ERROR", details: query.error.flatten() });
+    return await store.calculateBill(query.data.subscriberNo, query.data.month, query.data.year);
+  });
+
+  app.get("/api/v1/bill/detailed", { preHandler: subscriberOnly }, async (request, reply) => {
+    const query = z.object({ subscriberNo: z.string().min(1), month: monthSchema, year: yearSchema }).safeParse(request.query);
+    if (!query.success) return reply.status(400).send({ error: "VALIDATION_ERROR", details: query.error.flatten() });
+    const bill = await store.calculateBill(query.data.subscriberNo, query.data.month, query.data.year);
+    return { bill, usage: await store.getUsage(query.data.subscriberNo, query.data.month, query.data.year), payments: await store.getPayments(query.data.subscriberNo, query.data.month, query.data.year) };
+  });
+
+  app.post("/api/v1/usage", { preHandler: subscriberOnly }, async (request, reply) => {
+    const body = z.object({ subscriberNo: z.string().min(1), month: monthSchema, year: yearSchema, usageType: z.enum(["Phone", "Internet"]), amount: z.number().positive() }).safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "VALIDATION_ERROR", details: body.error.flatten() });
+    return reply.status(201).send(await store.addUsage(body.data));
+  });
+
+  app.post("/api/v1/bill/calculate", async (request, reply) => {
+    const body = z.object({ subscriberNo: z.string().min(1), month: monthSchema, year: yearSchema }).safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "VALIDATION_ERROR", details: body.error.flatten() });
+    return await store.calculateBill(body.data.subscriberNo, body.data.month, body.data.year);
+  });
+
+  app.post("/api/v1/pay", { preHandler: subscriberOnly }, async (request, reply) => {
+    const body = z.object({ subscriberNo: z.string().min(1), month: monthSchema, year: yearSchema, amount: z.number().positive(), transactionId: z.string().min(1) }).safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "VALIDATION_ERROR", details: body.error.flatten() });
+    try {
+      const result = await store.payBill(body.data);
+      return reply.status(200).send({ status: "SUCCESS", payment: result.payment, bill: result.bill });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "PAYMENT_FAILED";
+      return reply.status(message === "DUPLICATE_TRANSACTION" ? 409 : 400).send({ status: "REJECTED", error: message });
+    }
+  });
+
+  app.post("/api/v1/auth/token", async (request, reply) => {
+    const body = z.object({ subscriberNo: z.string().min(1) }).safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "VALIDATION_ERROR" });
+    return { token: app.jwt.sign({ subscriberNo: body.data.subscriberNo, role: "subscriber" }) };
+  });
+
+  app.post("/api/v1/agent/question", async (request, reply) => {
+    const body = z.object({
+      subscriberNo: z.string().min(1),
+      question: z.string().min(3),
+      month: monthSchema.optional(),
+      year: yearSchema.optional(),
+    }).safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "VALIDATION_ERROR", details: body.error.flatten() });
+
+    const month = body.data.month ?? 4;
+    const year = body.data.year ?? 2025;
+
+    const policyText = await readFile("Mobile_Provider_Billing_Guide.md", "utf8");
+    try {
+      const live = await runLiveAgent({
+        subscriberNo: body.data.subscriberNo,
+        question: body.data.question,
+        month,
+        year,
+        apiBase: `${process.env.BILLING_API_BASE ?? "http://127.0.0.1:3000"}/api/v1`,
+        policyText,
+      });
+      if (live) return live;
+    } catch (error) {
+      app.log.warn({ error }, "Live LLM unavailable; using deterministic fallback");
+    }
+    const question = body.data.question.toLowerCase();
+    const trace: Array<{ tool: string; input: unknown; result: unknown }> = [];
+
+    if (question.includes("internet") || question.includes("phone") || question.includes("allowance") || question.includes("extra") || question.includes("payment") || question.includes("pay")) {
+      const guide = await readFile("Mobile_Provider_Billing_Guide.md", "utf8");
+      const relevant = guide
+        .split("\n## ")
+        .filter((section) => section.toLowerCase().split(/\W+/).some((term) => question.includes(term) && term.length > 3))
+        .join("\n\n");
+      trace.push({ tool: "search_billing_documentation", input: { query: body.data.question }, result: relevant || guide });
+    }
+
+    let answer = "I found the relevant billing policy. Which bill month should I calculate?";
+    if (question.includes("bill") || question.includes("charge") || question.includes("usage") || question.includes("detailed")) {
+      const bill = await store.calculateBill(body.data.subscriberNo, month, year);
+      trace.push({ tool: question.includes("detailed") ? "query_bill_detailed" : "query_bill", input: { subscriberNo: body.data.subscriberNo, month, year }, result: bill });
+      answer = `Bill for ${month}/${year}: total $${bill.total}, paid $${bill.paidAmount}, remaining $${bill.remainingBalance}, status ${bill.status}.`;
+    }
+
+    if (question.includes("add") && (question.includes("usage") || question.includes("gb") || question.includes("minute"))) {
+      answer = "Usage is a write operation. Explicit confirmation is required before it can be added.";
+    }
+
+    if ((question.includes("pay bill") || question.includes("make a payment")) && !question.includes("confirmed")) {
+      answer = "Payment requires explicit confirmation. Resend the request with confirmed: true and a transaction ID.";
+    }
+
+    let scenario = "rest-only";
+    if (trace.length === 1) scenario = "mcp-only";
+    if (trace.length > 1) scenario = "combined";
+
+    return { answer, trace, model: process.env.LLM_MODEL ?? "deterministic-tool-orchestrator", scenario };
+  });
+
+  app.get("/", async (_request, reply) => {
+    reply.type("text/html");
+    return readFile("public/index.html", "utf8");
+  });
+
+  return app;
+}
+
+if (process.argv[1]?.endsWith("server.js") || process.argv[1]?.endsWith("server.ts")) {
+  const app = buildServer();
+  const port = Number(process.env.PORT ?? 3000);
+  await app.listen({ port, host: "0.0.0.0" });
+}

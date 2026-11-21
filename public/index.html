@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mobile Provider Billing Assistant</title>
+  <style>
+    :root { --ink:#17324d; --muted:#63758a; --cyan:#0d6680; --mint:#eaf7f6; --line:#d7e1e8; --white:#fff; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Segoe UI",sans-serif; background:#eef3f5; color:var(--ink); }
+    main { width:min(980px, calc(100% - 32px)); margin:24px auto; }
+    header { background:var(--cyan); color:white; padding:18px 20px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; }
+    header h1 { font-size:22px; margin:0; }
+    .status { width:12px; height:12px; border-radius:50%; background:#7ee7ca; }
+    .panel { background:white; border:1px solid var(--line); border-radius:8px; padding:18px; margin-top:14px; }
+    label { display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:7px; }
+    .controls { display:grid; grid-template-columns:1fr 120px 120px 100px; gap:10px; }
+    input, select, button { height:42px; border:1px solid #bdccd6; border-radius:6px; font:inherit; }
+    input, select { padding:0 10px; width:100%; }
+    button { border:0; background:#16718a; color:white; padding:0 14px; cursor:pointer; font-weight:700; }
+    button:hover { background:#10576b; }
+    .answer { margin-top:14px; padding:14px; background:var(--mint); border-left:4px solid #20a39b; min-height:58px; }
+    .trace { display:grid; gap:8px; }
+    .trace-item { border:1px solid var(--line); border-radius:6px; padding:10px; background:#fbfdfe; }
+    .trace-item strong { color:#13768a; }
+    pre { white-space:pre-wrap; overflow-wrap:anywhere; margin:8px 0 0; font-size:12px; }
+    @media (max-width:700px) { .controls { grid-template-columns:1fr 1fr; } header h1 { font-size:18px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header><h1>Mobile Provider Billing Assistant</h1><span class="status" title="Service available"></span></header>
+    <section class="panel">
+      <label for="subscriber">SUBSCRIBER</label>
+      <input id="subscriber" value="1001" />
+      <label for="question" style="margin-top:14px">QUESTION</label>
+      <div class="controls">
+        <input id="question" value="Why is my internet charge higher this month?" />
+        <input id="month" type="number" aria-label="Billing month" min="1" max="12" value="4" />
+        <input id="year" type="number" aria-label="Billing year" value="2025" />
+        <button id="send">Ask</button>
+      </div>
+      <div id="answer" class="answer">Ask a policy or bill question.</div>
+    </section>
+    <section class="panel">
+      <label>WRITE ACTIONS - EXPLICIT CONFIRMATION REQUIRED</label>
+      <div class="controls">
+        <select id="usageType" aria-label="Usage type"><option>Phone</option><option>Internet</option></select>
+        <input id="usageAmount" type="number" aria-label="Usage amount or payment amount" min="1" value="100" />
+        <input id="transactionId" aria-label="Payment transaction ID" placeholder="Transaction ID" />
+        <button id="confirmWrite" type="button">Execute</button>
+      </div>
+      <div style="margin-top:10px"><label><input id="confirmed" type="checkbox" style="width:auto;height:auto" /> I confirm this simulated usage/payment action</label></div>
+      <div class="controls" style="margin-top:10px">
+        <button id="addUsage" type="button">Add Usage</button>
+        <button id="payBill" type="button">Pay Bill</button>
+        <div></div><div></div>
+      </div>
+      <div id="writeResult" class="answer" style="margin-top:10px">No write action executed.</div>
+    </section>
+    <section class="panel">
+      <label>AGENT TOOL EXECUTION TRACE</label>
+      <div id="trace" class="trace">No calls yet.</div>
+    </section>
+  </main>
+  <script>
+    const send = document.querySelector('#send');
+    const question = document.querySelector('#question');
+    const trace = document.querySelector('#trace');
+    const answer = document.querySelector('#answer');
+
+    async function ask() {
+      send.disabled = true;
+      answer.textContent = 'Thinking...';
+      trace.textContent = 'Executing tools...';
+      try {
+        const response = await fetch('/api/v1/agent/question', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            subscriberNo: document.querySelector('#subscriber').value,
+            question: question.value,
+            month: Number(document.querySelector('#month').value),
+            year: Number(document.querySelector('#year').value)
+          })
+        });
+        const data = await response.json();
+        answer.textContent = data.answer;
+        trace.innerHTML = '';
+        for (const item of data.trace || []) {
+          const block = document.createElement('div');
+          block.className = 'trace-item';
+          block.innerHTML = '<strong>' + escapeHtml(item.tool) + '</strong><pre></pre><pre></pre>';
+          block.querySelectorAll('pre')[0].textContent = 'INPUT: ' + JSON.stringify(item.input, null, 2);
+          block.querySelectorAll('pre')[1].textContent = 'RESULT: ' + JSON.stringify(item.result, null, 2);
+          trace.appendChild(block);
+        }
+        if (!data.trace?.length) trace.textContent = 'No tool calls.';
+      } catch (error) {
+        answer.textContent = 'The assistant could not reach the API.';
+        trace.textContent = String(error);
+      } finally {
+        send.disabled = false;
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
+    }
+
+    async function authorizedFetch(url, options = {}) {
+      const subscriberNo = document.querySelector('#subscriber').value;
+      const tokenResponse = await fetch('/api/v1/auth/token', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subscriberNo }) });
+      const tokenData = await tokenResponse.json();
+      options.headers = { 'content-type': 'application/json', authorization: 'Bearer ' + tokenData.token, ...(options.headers || {}) };
+      return fetch(url, options);
+    }
+
+    async function executeWrite(kind) {
+      const result = document.querySelector('#writeResult');
+      if (!document.querySelector('#confirmed').checked) {
+        result.textContent = 'Confirmation is required before a write or payment.';
+        return;
+      }
+      const subscriberNo = document.querySelector('#subscriber').value;
+      const month = Number(document.querySelector('#month').value);
+      const year = Number(document.querySelector('#year').value);
+      try {
+        let response;
+        if (kind === 'usage') {
+          response = await authorizedFetch('/api/v1/usage', { method: 'POST', body: JSON.stringify({ subscriberNo, month, year, usageType: document.querySelector('#usageType').value, amount: Number(document.querySelector('#usageAmount').value) }) });
+        } else {
+          const transactionId = document.querySelector('#transactionId').value.trim();
+          if (!transactionId) { result.textContent = 'A transaction ID is required.'; return; }
+          response = await authorizedFetch('/api/v1/pay', { method: 'POST', body: JSON.stringify({ subscriberNo, month, year, amount: Number(document.querySelector('#usageAmount').value), transactionId }) });
+        }
+        const data = await response.json();
+        result.textContent = response.ok ? JSON.stringify(data, null, 2) : 'Rejected: ' + JSON.stringify(data);
+      } catch (error) { result.textContent = String(error); }
+    }
+
+    send.addEventListener('click', ask);
+    question.addEventListener('keydown', event => { if (event.key === 'Enter') ask(); });
+    document.querySelector('#addUsage').addEventListener('click', () => executeWrite('usage'));
+    document.querySelector('#payBill').addEventListener('click', () => executeWrite('payment'));
+  </script>
+</body>
+</html>
