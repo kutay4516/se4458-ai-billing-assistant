@@ -8,6 +8,7 @@ A service-oriented midterm implementation for the mobile provider billing scenar
 - JWT subscriber authentication
 - PostgreSQL schema and Docker Compose deployment
 - MCP SDK server with billing and policy tools
+- Credential login issuing JWTs to a subscriber identity
 - LLM-ready agent endpoint with tool execution traces
 - Static mobile billing chat interface
 - No real money or card processing
@@ -73,11 +74,13 @@ Payment tool input requires `confirmed: true`.
 
 ## Authentication
 
-Create a demo subscriber token:
+Authenticate with the demo subscriber credentials:
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri 'http://localhost:3000/api/v1/auth/token' -ContentType 'application/json' -Body '{"subscriberNo":"1001"}'
+Invoke-RestMethod -Method Post -Uri 'http://localhost:3000/api/v1/auth/token' -ContentType 'application/json' -Body '{"subscriberNo":"1001","username":"subscriber1001","password":"change-me"}'
 ```
+
+Configure `DEMO_SUBSCRIBER_NO`, `DEMO_USERNAME`, `DEMO_PASSWORD`, and `JWT_SECRET` in `.env` for deployment. Use a strong password and strong JWT secret; never commit real secrets.
 
 Send the returned token as `Authorization: Bearer <token>` for usage, detailed bill, and payment requests.
 

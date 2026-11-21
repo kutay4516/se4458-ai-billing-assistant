@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildServer } from "../src/server.js";
 
+process.env.DATABASE_URL = "";
+
 describe("billing API", () => {
   it("returns health status", async () => {
     const app = buildServer();
@@ -35,7 +37,7 @@ describe("billing API", () => {
 
   it("adds usage and recalculates the bill", async () => {
     const app = buildServer();
-    const tokenResponse = await app.inject({ method: "POST", url: "/api/v1/auth/token", payload: { subscriberNo: "1001" } });
+    const tokenResponse = await app.inject({ method: "POST", url: "/api/v1/auth/token", payload: { subscriberNo: "1001", username: "subscriber1001", password: "change-me" } });
     const token = tokenResponse.json().token;
     const usageResponse = await app.inject({
       method: "POST", url: "/api/v1/usage",
@@ -52,10 +54,10 @@ describe("billing API", () => {
 
   it("records a partial payment and rejects duplicate transactions", async () => {
     const app = buildServer();
-    const tokenResponse = await app.inject({ method: "POST", url: "/api/v1/auth/token", payload: { subscriberNo: "1001" } });
+    const tokenResponse = await app.inject({ method: "POST", url: "/api/v1/auth/token", payload: { subscriberNo: "1001", username: "subscriber1001", password: "change-me" } });
     const token = tokenResponse.json().token;
     const headers = { authorization: `Bearer ${token}` };
-    const payment = { subscriberNo: "1001", month: 4, year: 2025, amount: 10, transactionId: "test-tx-1" };
+    const payment = { subscriberNo: "1001", month: 4, year: 2025, amount: 10, transactionId: `test-tx-${Date.now()}` };
 
     const first = await app.inject({ method: "POST", url: "/api/v1/pay", headers, payload: payment });
     expect(first.statusCode).toBe(200);
@@ -67,9 +69,20 @@ describe("billing API", () => {
     await app.close();
   });
 
+  it("rejects invalid credentials", async () => {
+    const app = buildServer();
+    const response = await app.inject({
+      method: "POST", url: "/api/v1/auth/token",
+      payload: { subscriberNo: "1001", username: "subscriber1001", password: "wrong-password" },
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error).toBe("INVALID_CREDENTIALS");
+    await app.close();
+  });
+
   it("rejects mismatched subscriber identity", async () => {
     const app = buildServer();
-    const tokenResponse = await app.inject({ method: "POST", url: "/api/v1/auth/token", payload: { subscriberNo: "1001" } });
+    const tokenResponse = await app.inject({ method: "POST", url: "/api/v1/auth/token", payload: { subscriberNo: "1001", username: "subscriber1001", password: "change-me" } });
     const response = await app.inject({
       method: "POST", url: "/api/v1/pay",
       headers: { authorization: `Bearer ${tokenResponse.json().token}` },

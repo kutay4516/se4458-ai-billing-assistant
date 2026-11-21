@@ -81,9 +81,23 @@ export function buildServer() {
   });
 
   app.post("/api/v1/auth/token", async (request, reply) => {
-    const body = z.object({ subscriberNo: z.string().min(1) }).safeParse(request.body);
+    const body = z.object({
+      subscriberNo: z.string().min(1),
+      username: z.string().min(1),
+      password: z.string().min(1),
+    }).safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: "VALIDATION_ERROR" });
-    return { token: app.jwt.sign({ subscriberNo: body.data.subscriberNo, role: "subscriber" }) };
+
+    const configuredSubscriber = process.env.DEMO_SUBSCRIBER_NO ?? "1001";
+    const configuredUsername = process.env.DEMO_USERNAME ?? "subscriber1001";
+    const configuredPassword = process.env.DEMO_PASSWORD ?? "change-me";
+
+    const authenticated = body.data.subscriberNo === configuredSubscriber
+      && body.data.username === configuredUsername
+      && body.data.password === configuredPassword;
+
+    if (!authenticated) return reply.status(401).send({ error: "INVALID_CREDENTIALS" });
+    return { token: app.jwt.sign({ subscriberNo: configuredSubscriber, role: "subscriber" }) };
   });
 
   app.post("/api/v1/agent/question", async (request, reply) => {

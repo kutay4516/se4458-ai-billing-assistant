@@ -31,8 +31,13 @@
   <main>
     <header><h1>Mobile Provider Billing Assistant</h1><span class="status" title="Service available"></span></header>
     <section class="panel">
-      <label for="subscriber">SUBSCRIBER</label>
-      <input id="subscriber" value="1001" />
+      <label for="subscriber">SUBSCRIBER / USERNAME</label>
+      <div class="controls">
+        <input id="subscriber" aria-label="Subscriber number" value="1001" />
+        <input id="username" aria-label="Username" value="subscriber1001" />
+        <input id="password" aria-label="Password" type="password" value="change-me" />
+        <button id="login" type="button">Login</button>
+      </div>
       <label for="question" style="margin-top:14px">QUESTION</label>
       <div class="controls">
         <input id="question" value="Why is my internet charge higher this month?" />
@@ -110,8 +115,9 @@
 
     async function authorizedFetch(url, options = {}) {
       const subscriberNo = document.querySelector('#subscriber').value;
-      const tokenResponse = await fetch('/api/v1/auth/token', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subscriberNo }) });
+      const tokenResponse = await fetch('/api/v1/auth/token', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subscriberNo, username: document.querySelector('#username').value, password: document.querySelector('#password').value }) });
       const tokenData = await tokenResponse.json();
+      if (!tokenResponse.ok || !tokenData.token) throw new Error('INVALID_CREDENTIALS');
       options.headers = { 'content-type': 'application/json', authorization: 'Bearer ' + tokenData.token, ...(options.headers || {}) };
       return fetch(url, options);
     }
@@ -138,6 +144,15 @@
         result.textContent = response.ok ? JSON.stringify(data, null, 2) : 'Rejected: ' + JSON.stringify(data);
       } catch (error) { result.textContent = String(error); }
     }
+
+    document.querySelector('#login').addEventListener('click', async () => {
+      try {
+        await authorizedFetch('/api/v1/bill/detailed?subscriberNo=' + encodeURIComponent(document.querySelector('#subscriber').value) + '&month=' + document.querySelector('#month').value + '&year=' + document.querySelector('#year').value);
+        document.querySelector('#writeResult').textContent = 'Login successful.';
+      } catch (error) {
+        document.querySelector('#writeResult').textContent = 'Login failed: ' + String(error.message || error);
+      }
+    });
 
     send.addEventListener('click', ask);
     question.addEventListener('keydown', event => { if (event.key === 'Enter') ask(); });
