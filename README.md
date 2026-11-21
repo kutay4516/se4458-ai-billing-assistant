@@ -103,7 +103,7 @@ Set `LLM_API_KEY`, `LLM_API_BASE_URL`, and `LLM_MODEL` in `.env`. The agent rout
 
 ## Verification Evidence
 
-The current suite contains 16 passing tests covering formulas, store payments, MCP retrieval, API operations, authentication, authorization, and agent scenario labels.
+The current suite contains 17 passing tests covering formulas, store payments, MCP retrieval, API operations, authentication, authorization, invalid credentials, and agent scenario labels.
 
 Verified locally:
 
@@ -113,6 +113,20 @@ Verified locally:
 - Protected gateway detailed bill using a subscriber JWT
 - Partial payment and duplicate transaction rejection
 - Subscriber mismatch rejection
+- Valid JWT login and invalid credential rejection
+
+## Submission Evidence Checklist
+
+- Chat UI and tool trace screenshots
+- MCP-only, REST-only, and combined agent scenario logs
+- Three policy retrieval queries with one success and one no-match case
+- Swagger/OpenAPI screenshot
+- Public gateway route evidence
+- Protected gateway route with JWT evidence
+- Docker Compose container status and PostgreSQL records
+- Successful simulated payment and duplicate transaction rejection
+- `npm test` and `npm run build` output
+- Live Gemini response or test trace
 
 ## Cloud Deployment
 
