@@ -20,6 +20,8 @@ services:
       DEMO_USERNAME: ${DEMO_USERNAME:-subscriber1001}
       DEMO_PASSWORD: ${DEMO_PASSWORD:-change-me}
       DATABASE_URL: ${DATABASE_URL:-postgresql://billing:${POSTGRES_PASSWORD:-billing}@postgres:5432/billing}
+      GATEWAY_BASE_URL: ${GATEWAY_BASE_URL:-http://gateway:3001/gateway/v1}
+      GATEWAY_PUBLIC_URL: ${GATEWAY_PUBLIC_URL:-http://localhost:3001/gateway/v1}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_API_BASE_URL: ${LLM_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
       LLM_MODEL: ${LLM_MODEL:-gemini-2.5-flash}

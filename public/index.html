@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mobile Provider Billing Assistant</title>
+  <script src="/config.js"></script>
   <style>
     :root { --ink:#17324d; --muted:#63758a; --cyan:#0d6680; --mint:#eaf7f6; --line:#d7e1e8; --white:#fff; }
     * { box-sizing:border-box; }
@@ -69,6 +70,8 @@
     </section>
   </main>
   <script>
+    const gatewayBase = window.BILLING_GATEWAY_BASE_URL || 'http://localhost:3001/gateway/v1';
+    const gatewayUrl = path => gatewayBase.replace(/\/$/, '') + path;
     const send = document.querySelector('#send');
     const question = document.querySelector('#question');
     const trace = document.querySelector('#trace');
@@ -79,14 +82,15 @@
       answer.textContent = 'Thinking...';
       trace.textContent = 'Executing tools...';
       try {
-        const response = await fetch('/api/v1/agent/question', {
+        const response = await authorizedFetch(gatewayUrl('/agent/question'), {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             subscriberNo: document.querySelector('#subscriber').value,
             question: question.value,
             month: Number(document.querySelector('#month').value),
-            year: Number(document.querySelector('#year').value)
+            year: Number(document.querySelector('#year').value),
+            confirmed: document.querySelector('#confirmed').checked
           })
         });
         const data = await response.json();
@@ -115,7 +119,7 @@
 
     async function authorizedFetch(url, options = {}) {
       const subscriberNo = document.querySelector('#subscriber').value;
-      const tokenResponse = await fetch('/api/v1/auth/token', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subscriberNo, username: document.querySelector('#username').value, password: document.querySelector('#password').value }) });
+      const tokenResponse = await fetch(gatewayUrl('/auth/token'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subscriberNo, username: document.querySelector('#username').value, password: document.querySelector('#password').value }) });
       const tokenData = await tokenResponse.json();
       if (!tokenResponse.ok || !tokenData.token) throw new Error('INVALID_CREDENTIALS');
       options.headers = { 'content-type': 'application/json', authorization: 'Bearer ' + tokenData.token, ...(options.headers || {}) };
@@ -134,11 +138,11 @@
       try {
         let response;
         if (kind === 'usage') {
-          response = await authorizedFetch('/api/v1/usage', { method: 'POST', body: JSON.stringify({ subscriberNo, month, year, usageType: document.querySelector('#usageType').value, amount: Number(document.querySelector('#usageAmount').value) }) });
+          response = await authorizedFetch(gatewayUrl('/usage'), { method: 'POST', body: JSON.stringify({ subscriberNo, month, year, usageType: document.querySelector('#usageType').value, amount: Number(document.querySelector('#usageAmount').value), confirmed: true }) });
         } else {
           const transactionId = document.querySelector('#transactionId').value.trim();
           if (!transactionId) { result.textContent = 'A transaction ID is required.'; return; }
-          response = await authorizedFetch('/api/v1/pay', { method: 'POST', body: JSON.stringify({ subscriberNo, month, year, amount: Number(document.querySelector('#usageAmount').value), transactionId }) });
+          response = await authorizedFetch(gatewayUrl('/pay'), { method: 'POST', body: JSON.stringify({ subscriberNo, month, year, amount: Number(document.querySelector('#usageAmount').value), transactionId, confirmed: true }) });
         }
         const data = await response.json();
         result.textContent = response.ok ? JSON.stringify(data, null, 2) : 'Rejected: ' + JSON.stringify(data);
@@ -147,7 +151,7 @@
 
     document.querySelector('#login').addEventListener('click', async () => {
       try {
-        await authorizedFetch('/api/v1/bill/detailed?subscriberNo=' + encodeURIComponent(document.querySelector('#subscriber').value) + '&month=' + document.querySelector('#month').value + '&year=' + document.querySelector('#year').value);
+        await authorizedFetch(gatewayUrl('/bill/detailed?subscriberNo=' + encodeURIComponent(document.querySelector('#subscriber').value) + '&month=' + document.querySelector('#month').value + '&year=' + document.querySelector('#year').value));
         document.querySelector('#writeResult').textContent = 'Login successful.';
       } catch (error) {
         document.querySelector('#writeResult').textContent = 'Login failed: ' + String(error.message || error);

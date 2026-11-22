@@ -1,14 +1,18 @@
+import "dotenv/config";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { readFile } from "node:fs/promises";
-import { searchBillingPolicy } from "./search.js";
+import { basename } from "node:path";
+import { indexBillingPolicy, searchIndexedBillingPolicy } from "./search.js";
 
-const apiBase = process.env.BILLING_API_BASE ?? "http://127.0.0.1:3000/api/v1";
+export async function buildMcpServer() {
+const gatewayBase = process.env.GATEWAY_BASE_URL ?? "http://127.0.0.1:3001/gateway/v1";
 const server = new McpServer({ name: "mobile-provider-billing", version: "1.0.0" });
+const policyIndex = indexBillingPolicy(await readFile("Mobile_Provider_Billing_Guide.md", "utf8"));
 
 async function authenticatedApi(path: string, init: RequestInit = {}) {
-  const login = await fetch(`${apiBase}/auth/token`, {
+  const login = await fetch(`${gatewayBase}/auth/token`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -20,7 +24,7 @@ async function authenticatedApi(path: string, init: RequestInit = {}) {
   const loginBody = await login.json();
   if (!login.ok || !loginBody.token) throw new Error("INVALID_MCP_CREDENTIALS");
 
-  const response = await fetch(`${apiBase}${path}`, {
+  const response = await fetch(`${gatewayBase}${path}`, {
     ...init,
     headers: {
       "content-type": "application/json",
@@ -34,7 +38,7 @@ async function authenticatedApi(path: string, init: RequestInit = {}) {
 }
 
 async function api(path: string, init?: RequestInit) {
-  const response = await fetch(`${apiBase}${path}`, init);
+  const response = await fetch(`${gatewayBase}${path}`, init);
   const body = await response.json();
   if (!response.ok) throw new Error(JSON.stringify(body));
   return body;
@@ -43,16 +47,15 @@ async function api(path: string, init?: RequestInit) {
 server.tool("search_billing_documentation", "Search the indexed mobile provider billing guide", {
   query: z.string().min(2).describe("Policy, pricing, allowance, or payment question"),
 }, async ({ query }) => {
-  const guide = await readFile("Mobile_Provider_Billing_Guide.md", "utf8");
-  const matches = searchBillingPolicy(guide, query);
-  const text = matches.length ? matches.map((match) => `[${match.id}] ${match.text}`).join("\n\n") : "No relevant policy chunk found.";
+  const matches = searchIndexedBillingPolicy(policyIndex, query);
+  const text = matches.length ? matches.map((match) => `[${match.id}] ${match.text}`).join("\n\n") : "No relevant policy section found.";
   return { content: [{ type: "text", text }] };
 });
 
 server.tool("calculate_bill", "Calculate a subscriber's bill for a billing month", {
   subscriberNo: z.string().min(1), month: z.number().int().min(1).max(12), year: z.number().int().min(2000).max(2100),
 }, async (args) => {
-  const result = await api("/bill/calculate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(args) });
+  const result = await authenticatedApi("/bill/calculate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(args) });
   return { content: [{ type: "text", text: JSON.stringify(result) }] };
 });
 
@@ -73,7 +76,7 @@ server.tool("query_bill_detailed", "Query detailed usage and payment information
 });
 
 server.tool("add_usage", "Add phone or internet usage to a subscriber's bill", {
-  subscriberNo: z.string().min(1), month: z.number().int().min(1).max(12), year: z.number().int().min(2000).max(2100), usageType: z.enum(["Phone", "Internet"]), amount: z.number().positive(),
+  subscriberNo: z.string().min(1), month: z.number().int().min(1).max(12), year: z.number().int().min(2000).max(2100), usageType: z.enum(["Phone", "Internet"]), amount: z.number().positive(), confirmed: z.literal(true),
 }, async (args) => {
   const result = await authenticatedApi("/usage", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(args) });
   return { content: [{ type: "text", text: JSON.stringify(result) }] };
@@ -82,10 +85,14 @@ server.tool("add_usage", "Add phone or internet usage to a subscriber's bill", {
 server.tool("pay_bill", "Record a simulated bill payment", {
   subscriberNo: z.string().min(1), month: z.number().int().min(1).max(12), year: z.number().int().min(2000).max(2100), amount: z.number().positive(), transactionId: z.string().min(1), confirmed: z.literal(true),
 }, async (args) => {
-  const { confirmed: _confirmed, ...payment } = args;
-  const result = await authenticatedApi("/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payment) });
+  const result = await authenticatedApi("/pay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(args) });
   return { content: [{ type: "text", text: JSON.stringify(result) }] };
 });
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+return server;
+}
+
+if (["server.js", "server.ts"].includes(basename(process.argv[1] ?? ""))) {
+  const server = await buildMcpServer();
+  await server.connect(new StdioServerTransport());
+}
