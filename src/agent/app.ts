@@ -48,8 +48,8 @@ export function buildAgentApp(options: AgentAppOptions) {
         tags: ["Agent"], summary: "Ask the billing assistant (LLM tool calling -> MCP and/or REST via gateway)", security: [{ bearerAuth: [] }],
         body: { type: "object", required: ["message"], additionalProperties: false, properties: {
           message: { type: "string", minLength: 1, maxLength: 2000 },
-          conversationId: { type: "string", minLength: 1, maxLength: 64 },
-          confirmActionId: { type: "string", minLength: 1, maxLength: 64, description: "Action id from pendingConfirmation; confirms the staged payment" },
+          conversationId: { type: "string", nullable: true, minLength: 1, maxLength: 64, description: "Omit (or null) to start a conversation; reuse the returned id to continue it" },
+          confirmActionId: { type: "string", nullable: true, minLength: 1, maxLength: 64, description: "Action id from pendingConfirmation; confirms the staged payment" },
         } },
       },
     }, async (request, reply) => {

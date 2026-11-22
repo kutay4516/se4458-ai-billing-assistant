@@ -1,4 +1,4 @@
-# Test evidence - 2026-11-22T17:05Z
+# Test evidence - 2026-11-22T18:24Z
 
 ## npm run build (tsc strict): OK
 
@@ -7,21 +7,21 @@
 
 
 
- RUN  v3.2.7 /home/claude/repo/se4458-ai-billing-assistant
+ RUN  v3.2.7 /home/claude/se4458-ai-billing-assistant
 
- ✓ test/agent.test.ts (21 tests) 3234ms
- ✓ test/store.test.ts (11 tests) 690ms
- ✓ test/seed.test.ts (2 tests) 233ms
- ✓ test/api.test.ts (29 tests) 352ms
- ✓ test/gateway.test.ts (15 tests) 345ms
+ ✓ test/agent.test.ts (22 tests) 3529ms
+ ✓ test/store.test.ts (11 tests) 663ms
+ ✓ test/api.test.ts (29 tests) 379ms
+ ✓ test/gateway.test.ts (15 tests) 350ms
+ ✓ test/seed.test.ts (2 tests) 239ms
+ ✓ test/llm.test.ts (10 tests) 17ms
  ✓ test/mcp.test.ts (14 tests) 26ms
- ✓ test/llm.test.ts (10 tests) 20ms
  ✓ test/pricing.test.ts (7 tests) 3ms
 
  Test Files  8 passed (8)
-      Tests  109 passed (109)
-   Start at  17:05:12
-   Duration  6.53s (transform 222ms, setup 0ms, collect 654ms, tests 4.90s, environment 1ms, prepare 283ms)
+      Tests  110 passed (110)
+   Start at  18:24:17
+   Duration  6.88s (transform 203ms, setup 0ms, collect 669ms, tests 5.21s, environment 1ms, prepare 297ms)
 
 
 
@@ -30,19 +30,19 @@
 
 
 
- RUN  v3.2.7 /home/claude/repo/se4458-ai-billing-assistant
+ RUN  v3.2.7 /home/claude/se4458-ai-billing-assistant
 
- ✓ test/agent.test.ts (21 tests) 3245ms
- ✓ test/store.test.ts (22 tests) 1660ms
- ✓ test/api.test.ts (29 tests) 364ms
- ✓ test/gateway.test.ts (15 tests) 338ms
- ✓ test/seed.test.ts (4 tests) 557ms
- ✓ test/mcp.test.ts (14 tests) 25ms
- ✓ test/llm.test.ts (10 tests) 18ms
+ ✓ test/agent.test.ts (22 tests) 3346ms
+ ✓ test/store.test.ts (22 tests) 1714ms
+ ✓ test/api.test.ts (29 tests) 379ms
+ ✓ test/gateway.test.ts (15 tests) 358ms
+ ✓ test/seed.test.ts (4 tests) 556ms
+ ✓ test/mcp.test.ts (14 tests) 26ms
+ ✓ test/llm.test.ts (10 tests) 16ms
  ✓ test/pricing.test.ts (7 tests) 3ms
 
  Test Files  8 passed (8)
-      Tests  122 passed (122)
-   Start at  17:05:18
-   Duration  7.93s (transform 212ms, setup 0ms, collect 705ms, tests 6.21s, environment 1ms, prepare 297ms)
+      Tests  123 passed (123)
+   Start at  18:24:24
+   Duration  8.14s (transform 213ms, setup 0ms, collect 704ms, tests 6.40s, environment 1ms, prepare 299ms)
 

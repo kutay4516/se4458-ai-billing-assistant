@@ -40,11 +40,14 @@
                   },
                   "conversationId": {
                     "type": "string",
+                    "nullable": true,
                     "minLength": 1,
-                    "maxLength": 64
+                    "maxLength": 64,
+                    "description": "Omit (or null) to start a conversation; reuse the returned id to continue it"
                   },
                   "confirmActionId": {
                     "type": "string",
+                    "nullable": true,
                     "minLength": 1,
                     "maxLength": 64,
                     "description": "Action id from pendingConfirmation; confirms the staged payment"

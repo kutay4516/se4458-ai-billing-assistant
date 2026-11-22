@@ -202,11 +202,11 @@ tools actually executed. The UI renders the trace.
 ## 8. Tests
 
 ```bash
-npm test                                   # 109 tests, no cloud, no database, no live LLM
-TEST_DATABASE_URL=postgresql://user:pw@localhost:5432/testdb npm test   # + store/seed contracts against real PostgreSQL (122 tests)
+npm test                                   # 110 tests, no cloud, no database, no live LLM
+TEST_DATABASE_URL=postgresql://user:pw@localhost:5432/testdb npm test   # + store/seed contracts against real PostgreSQL (123 tests)
 npm run build                              # TypeScript strict compile
 ```
-Evidence of a successful run: [docs/evidence/test-results.txt](docs/evidence/test-results.txt) (both modes: 109 and 122 passing).
+Evidence of a successful run: [docs/evidence/test-results.txt](docs/evidence/test-results.txt) (both modes: 110 and 123 passing).
 
 | REST operation | Success tests | Failure / edge tests |
 |---|---|---|
@@ -321,5 +321,5 @@ src/billing/    pricing, stores, seed, passwords   src/gateway/  route table, au
 src/agent/      LLM client, tools, agent loop, sessions, HTTP app
 migrations/     idempotent SQL schema              public/       chat UI
 scripts/        dev launcher, e2e demo, real-environment verification, demo reset, OpenAPI export, mock LLM (test double)
-test/           109 automated tests                  docs/         architecture, OpenAPI, evidence
+test/           110 automated tests                  docs/         architecture, OpenAPI, evidence
 ```

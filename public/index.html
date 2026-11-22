@@ -143,7 +143,7 @@
     try {
       const res = await fetch(gateway + '/api/v1/agent/chat', {
         method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
-        body: JSON.stringify({ ...body, conversationId }),
+        body: JSON.stringify(conversationId ? { ...body, conversationId } : body), // omit it until the server has issued one
       });
       const data = await res.json();
       thinking.remove();

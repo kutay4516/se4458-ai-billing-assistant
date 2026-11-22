@@ -293,3 +293,15 @@ describe("OpenAI-compatible client", () => {
     expect(new Set(ids).size).toBe(2);
   });
 });
+
+describe("chat request body", () => {
+  it("accepts conversationId: null / omitted (first message from the chat UI) and issues a conversation id; an empty id is rejected", async () => {
+    const { llm } = scripted(() => toolCall("search_billing_documentation", { query: "extra internet cost" }), () => say("Extra internet costs $10 per started 10 GB block."));
+    const s = await stack(llm);
+    const res = await s.chat(s.t1001, { message: "How much does extra internet cost?", conversationId: null });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().conversationId).toEqual(expect.any(String));
+    const empty = await s.chat(s.t1001, { message: "hello", conversationId: "" });
+    expect(empty.statusCode).toBe(400);
+  });
+});
