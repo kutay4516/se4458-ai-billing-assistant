@@ -22,8 +22,13 @@ export function buildServer() {
 
   app.register(cors, { origin: true });
   app.register(jwt, { secret: process.env.JWT_SECRET ?? "development-only-secret" });
-  app.register(swagger, { openapi: { info: { title: "Mobile Provider Billing API", version: "1.0.0" } } });
-  app.register(swaggerUi, { routePrefix: "/docs" });
+  app.register(swagger, {
+    openapi: {
+      info: { title: "Mobile Provider Billing API", version: "1.0.0", description: "Versioned REST API for mobile billing, usage, payments, authentication, and AI agent operations." },
+      components: { securitySchemes: { bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" } } },
+    },
+  });
+  app.register(swaggerUi, { routePrefix: "/docs", uiConfig: { url: "/openapi-full.json", deepLinking: true } });
 
   const monthSchema = z.coerce.number().int().min(1).max(12);
   const yearSchema = z.coerce.number().int().min(2000).max(2100);
@@ -41,34 +46,119 @@ export function buildServer() {
     }
   };
 
-  app.get("/health", () => ({ status: "ok", service: "billing-api" }));
+  app.get("/openapi-manual.json", async () => ({
+    openapi: "3.0.3",
+    info: { title: "Mobile Provider Billing API", version: "1.0.0", description: "Billing REST API with MCP, AI agent, authentication, gateway, and PostgreSQL support." },
+    components: { securitySchemes: { bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" } } },
+    paths: {
+      "/health": { get: { tags: ["System"], summary: "Check API health", responses: { "200": { description: "API is healthy" } } } },
+      "/api/v1/bill": { get: { tags: ["Billing"], summary: "Query a subscriber bill", parameters: [{ name: "subscriberNo", in: "query", required: true, schema: { type: "string" } }, { name: "month", in: "query", required: true, schema: { type: "integer", minimum: 1, maximum: 12 } }, { name: "year", in: "query", required: true, schema: { type: "integer" } }], responses: { "200": { description: "Bill summary" }, "400": { description: "Invalid parameters" } } } },
+      "/api/v1/bill/detailed": { get: { tags: ["Billing"], summary: "Query detailed bill, usage, and payments", security: [{ bearerAuth: [] }], parameters: [{ name: "subscriberNo", in: "query", required: true, schema: { type: "string" } }, { name: "month", in: "query", required: true, schema: { type: "integer" } }, { name: "year", in: "query", required: true, schema: { type: "integer" } }], responses: { "200": { description: "Detailed billing data" }, "401": { description: "Authentication required" } } } },
+      "/api/v1/usage": { post: { tags: ["Usage"], summary: "Add subscriber usage", security: [{ bearerAuth: [] }], requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["subscriberNo", "month", "year", "usageType", "amount"], properties: { subscriberNo: { type: "string" }, month: { type: "integer" }, year: { type: "integer" }, usageType: { type: "string", enum: ["Phone", "Internet"] }, amount: { type: "number" } } } } } }, responses: { "201": { description: "Usage added" } } } },
+      "/api/v1/bill/calculate": { post: { tags: ["Billing"], summary: "Calculate a bill", requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["subscriberNo", "month", "year"], properties: { subscriberNo: { type: "string" }, month: { type: "integer" }, year: { type: "integer" } } } } } }, responses: { "200": { description: "Calculated bill" } } } },
+      "/api/v1/pay": { post: { tags: ["Payments"], summary: "Record a simulated payment", security: [{ bearerAuth: [] }], requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["subscriberNo", "month", "year", "amount", "transactionId"], properties: { subscriberNo: { type: "string" }, month: { type: "integer" }, year: { type: "integer" }, amount: { type: "number" }, transactionId: { type: "string" } } } } } }, responses: { "200": { description: "Payment accepted" }, "409": { description: "Duplicate transaction" } } } },
+      "/api/v1/auth/token": { post: { tags: ["Authentication"], summary: "Authenticate subscriber", requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["subscriberNo", "username", "password"], properties: { subscriberNo: { type: "string" }, username: { type: "string" }, password: { type: "string", format: "password" } } } } } }, responses: { "200": { description: "JWT issued" }, "401": { description: "Invalid credentials" } } } },
+      "/api/v1/agent/question": { post: { tags: ["AI Agent"], summary: "Ask a grounded billing question", requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["subscriberNo", "question"], properties: { subscriberNo: { type: "string" }, question: { type: "string" }, month: { type: "integer" }, year: { type: "integer" } } } } } }, responses: { "200": { description: "Agent answer with tool trace" } } } },
+    },
+  }));
 
-  app.get("/api/v1/bill", async (request, reply) => {
+  app.get("/openapi-full.json", async () => ({
+    openapi: "3.0.3",
+    info: { title: "Mobile Provider Billing API", version: "1.0.0", description: "Billing REST API with MCP, AI agent, authentication, gateway, and PostgreSQL support." },
+    components: { securitySchemes: { bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" } } },
+    paths: {
+      "/health": { get: { tags: ["System"], summary: "Check API health", responses: { "200": { description: "API is healthy" } } } },
+      "/api/v1/bill": { get: { tags: ["Billing"], summary: "Query a subscriber bill", parameters: [{ name: "subscriberNo", in: "query", required: true, schema: { type: "string" } }, { name: "month", in: "query", required: true, schema: { type: "integer", minimum: 1, maximum: 12 } }, { name: "year", in: "query", required: true, schema: { type: "integer" } }], responses: { "200": { description: "Bill summary" }, "400": { description: "Invalid parameters" } } } },
+      "/api/v1/bill/detailed": { get: { tags: ["Billing"], summary: "Query detailed bill, usage, and payments", security: [{ bearerAuth: [] }], parameters: [{ name: "subscriberNo", in: "query", required: true, schema: { type: "string" } }, { name: "month", in: "query", required: true, schema: { type: "integer" } }, { name: "year", in: "query", required: true, schema: { type: "integer" } }], responses: { "200": { description: "Detailed billing data" }, "401": { description: "Authentication required" } } } },
+      "/api/v1/usage": { post: { tags: ["Usage"], summary: "Add subscriber usage", security: [{ bearerAuth: [] }], requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["subscriberNo", "month", "year", "usageType", "amount"], properties: { subscriberNo: { type: "string" }, month: { type: "integer" }, year: { type: "integer" }, usageType: { type: "string", enum: ["Phone", "Internet"] }, amount: { type: "number" } } } } } }, responses: { "201": { description: "Usage added" } } } },
+      "/api/v1/bill/calculate": { post: { tags: ["Billing"], summary: "Calculate a bill", requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["subscriberNo", "month", "year"], properties: { subscriberNo: { type: "string" }, month: { type: "integer" }, year: { type: "integer" } } } } } }, responses: { "200": { description: "Calculated bill" } } } },
+      "/api/v1/pay": { post: { tags: ["Payments"], summary: "Record a simulated payment", security: [{ bearerAuth: [] }], requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["subscriberNo", "month", "year", "amount", "transactionId"], properties: { subscriberNo: { type: "string" }, month: { type: "integer" }, year: { type: "integer" }, amount: { type: "number" }, transactionId: { type: "string" } } } } } }, responses: { "200": { description: "Payment accepted" }, "409": { description: "Duplicate transaction" } } } },
+      "/api/v1/auth/token": { post: { tags: ["Authentication"], summary: "Authenticate subscriber", requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["subscriberNo", "username", "password"], properties: { subscriberNo: { type: "string" }, username: { type: "string" }, password: { type: "string", format: "password" } } } } } }, responses: { "200": { description: "JWT issued" }, "401": { description: "Invalid credentials" } } } },
+      "/api/v1/agent/question": { post: { tags: ["AI Agent"], summary: "Ask a grounded billing question", requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["subscriberNo", "question"], properties: { subscriberNo: { type: "string" }, question: { type: "string" }, month: { type: "integer" }, year: { type: "integer" } } } } } }, responses: { "200": { description: "Agent answer with tool trace" } } } },
+    },
+  }));
+
+  app.get("/health", {
+    schema: { tags: ["System"], summary: "Check API health", response: { 200: { type: "object", properties: { status: { type: "string" }, service: { type: "string" } } } } },
+  }, () => ({ status: "ok", service: "billing-api" }));
+
+  app.get("/api/v1/bill", {
+    schema: {
+      tags: ["Billing"],
+      summary: "Query a subscriber bill",
+      querystring: {
+        type: "object",
+        required: ["subscriberNo", "month", "year"],
+        properties: {
+          subscriberNo: { type: "string" },
+          month: { type: "integer", minimum: 1, maximum: 12 },
+          year: { type: "integer" },
+        },
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            subscriberNo: { type: "string" },
+            month: { type: "integer" },
+            year: { type: "integer" },
+            total: { type: "number" },
+            remainingBalance: { type: "number" },
+            status: { type: "string" },
+          },
+        },
+        400: { type: "object", properties: { error: { type: "string" } } },
+      },
+    },
+  }, async (request, reply) => {
     const query = z.object({ subscriberNo: z.string().min(1), month: monthSchema, year: yearSchema }).safeParse(request.query);
     if (!query.success) return reply.status(400).send({ error: "VALIDATION_ERROR", details: query.error.flatten() });
     return await store.calculateBill(query.data.subscriberNo, query.data.month, query.data.year);
   });
 
-  app.get("/api/v1/bill/detailed", { preHandler: subscriberOnly }, async (request, reply) => {
+  app.get("/api/v1/bill/detailed", {
+    preHandler: subscriberOnly,
+    schema: {
+      tags: ["Billing"], summary: "Query detailed bill, usage, and payment data", security: [{ bearerAuth: [] }],
+      querystring: { type: "object", required: ["subscriberNo", "month", "year"], properties: { subscriberNo: { type: "string" }, month: { type: "integer" }, year: { type: "integer" } } },
+    },
+  }, async (request, reply) => {
     const query = z.object({ subscriberNo: z.string().min(1), month: monthSchema, year: yearSchema }).safeParse(request.query);
     if (!query.success) return reply.status(400).send({ error: "VALIDATION_ERROR", details: query.error.flatten() });
     const bill = await store.calculateBill(query.data.subscriberNo, query.data.month, query.data.year);
     return { bill, usage: await store.getUsage(query.data.subscriberNo, query.data.month, query.data.year), payments: await store.getPayments(query.data.subscriberNo, query.data.month, query.data.year) };
   });
 
-  app.post("/api/v1/usage", { preHandler: subscriberOnly }, async (request, reply) => {
+  app.post("/api/v1/usage", {
+    preHandler: subscriberOnly,
+    schema: {
+      tags: ["Usage"], summary: "Add subscriber usage", security: [{ bearerAuth: [] }],
+      body: { type: "object", required: ["subscriberNo", "month", "year", "usageType", "amount"], properties: { subscriberNo: { type: "string" }, month: { type: "integer" }, year: { type: "integer" }, usageType: { type: "string", enum: ["Phone", "Internet"] }, amount: { type: "number" } } },
+    },
+  }, async (request, reply) => {
     const body = z.object({ subscriberNo: z.string().min(1), month: monthSchema, year: yearSchema, usageType: z.enum(["Phone", "Internet"]), amount: z.number().positive() }).safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: "VALIDATION_ERROR", details: body.error.flatten() });
     return reply.status(201).send(await store.addUsage(body.data));
   });
 
-  app.post("/api/v1/bill/calculate", async (request, reply) => {
+  app.post("/api/v1/bill/calculate", {
+    schema: {
+      tags: ["Billing"], summary: "Calculate a subscriber bill",
+      body: { type: "object", required: ["subscriberNo", "month", "year"], properties: { subscriberNo: { type: "string" }, month: { type: "integer" }, year: { type: "integer" } } },
+    },
+  }, async (request, reply) => {
     const body = z.object({ subscriberNo: z.string().min(1), month: monthSchema, year: yearSchema }).safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: "VALIDATION_ERROR", details: body.error.flatten() });
     return await store.calculateBill(body.data.subscriberNo, body.data.month, body.data.year);
   });
 
-  app.post("/api/v1/pay", { preHandler: subscriberOnly }, async (request, reply) => {
+  app.post("/api/v1/pay", {
+    preHandler: subscriberOnly,
+    schema: {
+      tags: ["Payments"], summary: "Record a simulated payment", security: [{ bearerAuth: [] }],
+      body: { type: "object", required: ["subscriberNo", "month", "year", "amount", "transactionId"], properties: { subscriberNo: { type: "string" }, month: { type: "integer" }, year: { type: "integer" }, amount: { type: "number" }, transactionId: { type: "string" } } },
+    },
+  }, async (request, reply) => {
     const body = z.object({ subscriberNo: z.string().min(1), month: monthSchema, year: yearSchema, amount: z.number().positive(), transactionId: z.string().min(1) }).safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: "VALIDATION_ERROR", details: body.error.flatten() });
     try {
@@ -80,7 +170,12 @@ export function buildServer() {
     }
   });
 
-  app.post("/api/v1/auth/token", async (request, reply) => {
+  app.post("/api/v1/auth/token", {
+    schema: {
+      tags: ["Authentication"], summary: "Authenticate a subscriber and issue a JWT",
+      body: { type: "object", required: ["subscriberNo", "username", "password"], properties: { subscriberNo: { type: "string" }, username: { type: "string" }, password: { type: "string", format: "password" } } },
+    },
+  }, async (request, reply) => {
     const body = z.object({
       subscriberNo: z.string().min(1),
       username: z.string().min(1),
@@ -100,7 +195,12 @@ export function buildServer() {
     return { token: app.jwt.sign({ subscriberNo: configuredSubscriber, role: "subscriber" }) };
   });
 
-  app.post("/api/v1/agent/question", async (request, reply) => {
+  app.post("/api/v1/agent/question", {
+    schema: {
+      tags: ["AI Agent"], summary: "Ask the billing AI agent a grounded question",
+      body: { type: "object", required: ["subscriberNo", "question"], properties: { subscriberNo: { type: "string" }, question: { type: "string" }, month: { type: "integer" }, year: { type: "integer" } } },
+    },
+  }, async (request, reply) => {
     const body = z.object({
       subscriberNo: z.string().min(1),
       question: z.string().min(3),
