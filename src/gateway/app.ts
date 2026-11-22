@@ -11,6 +11,8 @@ export interface GatewayOptions {
   agentBase: string;
   logger?: boolean;
   fetchImpl?: typeof fetch;
+  /** Shared secret sent to the billing API in `x-gateway-key` (the API refuses requests without it when it is configured). */
+  apiKey?: string;
   /** Multiplies every route limit; lets tests exercise 429 quickly. */
   rateLimitOverride?: number;
 }
@@ -80,6 +82,7 @@ export function buildGateway(options: GatewayOptions) {
       const url = `${base}${upstreamPath}${queryIndex >= 0 ? request.url.slice(queryIndex) : ""}`;
       const headers: Record<string, string> = { accept: route.id.startsWith("swagger") ? "*/*" : "application/json", "x-request-id": request.id, "x-forwarded-for": request.ip };
       if (request.headers.authorization) headers.authorization = request.headers.authorization;
+      if (route.upstream === "api" && options.apiKey) headers["x-gateway-key"] = options.apiKey;
       let body: string | undefined;
       if (request.method !== "GET" && request.body !== undefined) {
         headers["content-type"] = "application/json";

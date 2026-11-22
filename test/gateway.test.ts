@@ -156,3 +156,39 @@ describe("rate limiting keyed by subscriber identity", () => {
     await limited.close();
   });
 });
+
+describe("gateway-only access to the billing API (x-gateway-key)", () => {
+  const KEY = "unit-test-gateway-key";
+  let guardedApi: FastifyInstance;
+  let guardedUrl: string;
+  beforeAll(async () => {
+    const { store } = await makeApi();
+    const { buildApi } = await import("../src/api/app.js");
+    guardedApi = buildApi({ store, gatewayKey: KEY });
+    await guardedApi.ready();
+    guardedUrl = await listen(guardedApi);
+  });
+  afterAll(async () => { await guardedApi.close(); });
+
+  it("refuses direct calls without or with a wrong key, but keeps /health open", async () => {
+    const none = await fetch(`${guardedUrl}/api/v1/bill?subscriberNo=1001&month=10&year=2026`);
+    expect(none.status).toBe(403);
+    expect((await none.json()).error.code).toBe("GATEWAY_REQUIRED");
+    const wrong = await fetch(`${guardedUrl}/api/v1/auth/token`, { method: "POST", headers: { "x-gateway-key": "nope", "content-type": "application/json" }, body: JSON.stringify({ subscriberNo: "1001", password: "x" }) });
+    expect(wrong.status).toBe(403);
+    expect((await fetch(`${guardedUrl}/health`)).status).toBe(200);
+  });
+
+  it("works through a gateway that holds the key and fails through one that does not", async () => {
+    const withKey = buildGateway({ apiBase: guardedUrl, agentBase: "http://agent.invalid", apiKey: KEY });
+    const withoutKey = buildGateway({ apiBase: guardedUrl, agentBase: "http://agent.invalid" });
+    const ok = await withKey.inject({ method: "GET", url: "/api/v1/bill?subscriberNo=1001&month=10&year=2026" });
+    expect(ok.statusCode).toBe(200);
+    const login = await withKey.inject({ method: "POST", url: "/api/v1/auth/token", payload: { subscriberNo: "1001", password: "unit-test-password" } });
+    expect(login.statusCode).toBe(200);
+    const denied = await withoutKey.inject({ method: "GET", url: "/api/v1/bill?subscriberNo=1001&month=10&year=2026" });
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json().error.code).toBe("GATEWAY_REQUIRED");
+    await withKey.close(); await withoutKey.close();
+  });
+});

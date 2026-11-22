@@ -202,11 +202,11 @@ tools actually executed. The UI renders the trace.
 ## 8. Tests
 
 ```bash
-npm test                                   # 110 tests, no cloud, no database, no live LLM
-TEST_DATABASE_URL=postgresql://user:pw@localhost:5432/testdb npm test   # + store/seed contracts against real PostgreSQL (123 tests)
+npm test                                   # 112 tests, no cloud, no database, no live LLM
+TEST_DATABASE_URL=postgresql://user:pw@localhost:5432/testdb npm test   # + store/seed contracts against real PostgreSQL (125 tests)
 npm run build                              # TypeScript strict compile
 ```
-Evidence of a successful run: [docs/evidence/test-results.txt](docs/evidence/test-results.txt) (both modes: 110 and 123 passing).
+Evidence of a successful run: [docs/evidence/test-results.txt](docs/evidence/test-results.txt) (both modes: 112 and 125 passing).
 
 | REST operation | Success tests | Failure / edge tests |
 |---|---|---|
@@ -276,10 +276,10 @@ Between runs, `npm run demo:reset -- --yes` deletes the demo subscribers' paymen
 ![Payment staged, waiting for explicit confirmation](docs/screenshots/08a-payment-confirmation-required.png)
 ![Payment executed after confirmation](docs/screenshots/08b-payment-confirmed.png)
 
-**Unit tests** – `npm test` runs without cloud, database or live LLM: 8 test files, 110 tests passed (agent scenarios, identity checks and the payment confirmation gate included).
+**Unit tests** – `npm test` runs without cloud, database or live LLM: 8 test files, 112 tests passed (agent scenarios, identity checks and the payment confirmation gate included).
 
 ![npm test: start of the run](docs/screenshots/09a-unit-tests-run.png)
-![npm test: 110 tests passed](docs/screenshots/09b-unit-tests-result.png)
+![npm test: 112 tests passed](docs/screenshots/09b-unit-tests-result.png)
 
 ## 10. Cloud deployment
 
@@ -300,14 +300,14 @@ writes `docs/evidence/deployment.md`.
 
 | App | Ingress | Role / key env vars |
 |---|---|---|
-| `billing-api` | external (the gateway calls it over HTTPS; every route except login still needs a JWT) | `DATABASE_URL`, `JWT_SECRET`, `DEMO_PASSWORD` (secrets), `SEED_DEMO_DATA=true`; applies `migrations/*.sql` on start |
+| `billing-api` | external address, but **gateway-only**: every request except `/health` must carry the gateway's `x-gateway-key`, otherwise `403 GATEWAY_REQUIRED` | `DATABASE_URL`, `JWT_SECRET`, `DEMO_PASSWORD`, `GATEWAY_SHARED_SECRET` (secrets), `SEED_DEMO_DATA=true`; applies `migrations/*.sql` on start |
 | `billing-mcp` | external | `/mcp`, `/health` |
-| `billing-gateway` | external | `BILLING_API_URL`, `AGENT_URL`, `JWT_SECRET`; serves all REST routes and Swagger UI at `/docs` |
+| `billing-gateway` | external | `BILLING_API_URL`, `AGENT_URL`, `JWT_SECRET`, `GATEWAY_SHARED_SECRET` (secrets); serves all REST routes and Swagger UI at `/docs` |
 | `billing-agent` | external | `GATEWAY_URL`, `GATEWAY_PUBLIC_URL`, `MCP_URL`, `LLM_API_KEY` (secret), `LLM_MODEL`; its REST calls go through the gateway |
 
 If ACR Tasks is blocked for the subscription (e.g. Azure for Students: `TasksOperationsNotAllowed`), the script automatically builds with local Docker and pushes to the same registry (`--local-build` forces this).
 
-Why the API is not internal: on "express" Container Apps environments (Azure for Students) an internal address presents a TLS certificate that does not match its host name and `allowInsecure` is unsupported, so the gateway cannot reach it (`--internal-api` tries it anyway). The agent and the UI still reach the API only through the gateway; the API's public address is not used by any client.
+Why the API is not internal: on "express" Container Apps environments (Azure for Students) an internal address presents a TLS certificate that does not match its host name and `allowInsecure` is unsupported, so the gateway cannot reach it (`--internal-api` tries it anyway). To keep "everything goes through the gateway" true, the API accepts requests only with a secret header (`x-gateway-key`, `GATEWAY_SHARED_SECRET`, derived from `JWT_SECRET` by the deploy script) that only the gateway sends; a direct call to the API's public address answers `403 GATEWAY_REQUIRED` (checked by the deploy script and unit-tested). The agent and the UI reach the API only through the gateway.
 
 Each app runs one replica (rate limits and chat sessions are kept in memory). The seed data is created on the first start of the API and is idempotent.
 
@@ -346,6 +346,12 @@ Deployment checks (health, Swagger with 6 documented paths, 401 without token, l
 * **Query Bill is public** because the assignment table says so; it exposes only totals/status. A presented token is still checked.
 * **Payments:** global transaction-id uniqueness (a duplicate from any subscriber is rejected); payment of an already-paid bill → `NO_BALANCE_DUE`;
   payments for one bill are serialised with a row lock in PostgreSQL.
+* **Who may add usage / calculate a bill:** the assignment marks Add Usage and Calculate Bill as authenticated, without defining an admin role. Here a subscriber
+  may call them only for their own account (the JWT subject must match `subscriberNo`). Provider-side back-office systems and an operator/admin role are out of scope;
+  a production system would restrict these two operations to such a role.
+* **Gateway-only API:** locally the API accepts any caller (development convenience); when `GATEWAY_SHARED_SECRET` is set (cloud deployment) it accepts only the gateway.
+* **Database hosting:** a managed PostgreSQL service (Neon) is used for the cloud deployment instead of a database inside the Azure subscription; connection string and credentials are
+  stored as Container Apps secrets and never committed. `docker-compose.yml` provides a local PostgreSQL.
 * **Identity:** one subscriber = one login (`subscriberNo` + password). Subscriber management/registration is out of scope; seeded accounts only.
 * **Documentation (policy interpretation):** answers cite the section references returned by MCP. The repository's `Mobile_Provider_Billing_Guide.md`
   is the **instructor's official guide** (Document ID `MOB-BILLING-2026-01`); the index is rebuilt from it at every MCP start. Anything the guide does not cover is reported as "not found" rather than guessed.
@@ -365,5 +371,5 @@ src/billing/    pricing, stores, seed, passwords   src/gateway/  route table, au
 src/agent/      LLM client, tools, agent loop, sessions, HTTP app
 migrations/     idempotent SQL schema              public/       chat UI
 scripts/        dev launcher, e2e demo, real-environment verification, demo reset, OpenAPI export, mock LLM (test double)
-test/           110 automated tests                  docs/         architecture, OpenAPI, evidence
+test/           112 automated tests                  docs/         architecture, OpenAPI, evidence
 ```

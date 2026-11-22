@@ -15,6 +15,6 @@ if (process.env.SEED_DEMO_DATA !== "false") {
   await seedDemoData(store, password ?? "demo-password");
 }
 
-const app = buildApi({ store, logger: true });
+const app = buildApi({ store, logger: true, gatewayKey: process.env.GATEWAY_SHARED_SECRET || undefined });
 await app.listen({ port: Number(process.env.PORT ?? 3000), host: "0.0.0.0" });
 console.log(`Billing API using ${process.env.DATABASE_URL ? "PostgreSQL" : "in-memory store (no DATABASE_URL)"}`);

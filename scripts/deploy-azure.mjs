@@ -12,7 +12,7 @@
 // Options:  --resource-group <rg>  --location <region, default westeurope>  --env <containerapp environment>  --skip-build  --local-build  --internal-api  --skip-verify
 import "dotenv/config";
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 
 const isWin = process.platform === "win32";
@@ -59,7 +59,9 @@ const env = process.env;
 for (const k of ["JWT_SECRET", "DATABASE_URL", "DEMO_PASSWORD", "LLM_API_KEY"]) if (!env[k]) die(`${k} is missing in .env`);
 if (env.JWT_SECRET.length < 16) die("JWT_SECRET must be at least 16 characters");
 if (!/^postgres(ql)?:\/\//.test(env.DATABASE_URL)) die("DATABASE_URL must be a postgresql:// URL");
-secretsInUse.push(env.JWT_SECRET, env.DATABASE_URL, env.DEMO_PASSWORD, env.LLM_API_KEY);
+// Shared secret between the gateway and the billing API (the API refuses requests without it). Derived from JWT_SECRET unless GATEWAY_SHARED_SECRET is set.
+const gatewayKey = env.GATEWAY_SHARED_SECRET || createHmac("sha256", env.JWT_SECRET).update("billing-gateway-shared-secret").digest("hex");
+secretsInUse.push(env.JWT_SECRET, env.DATABASE_URL, env.DEMO_PASSWORD, env.LLM_API_KEY, gatewayKey);
 try { secretsInUse.push(decodeURIComponent(new URL(env.DATABASE_URL).password)); } catch { /* ignore */ }
 if (!existsSync("Dockerfile") || !existsSync("Mobile_Provider_Billing_Guide.md")) die("run this from the project folder (Dockerfile / Mobile_Provider_Billing_Guide.md not found)");
 
@@ -160,12 +162,12 @@ function deploy(def) {
 // and allowInsecure is not supported, so the gateway cannot call it. Default to a public address (JWT is still required); pass --internal-api to try internal.
 const apiIngress = flag("internal-api") ? "internal" : "external";
 deploy({ name: "billing-api", port: 3000, entry: "dist/api/main.js", ingress: apiIngress,
-  secrets: { jwt: env.JWT_SECRET, dbu: env.DATABASE_URL, demo: env.DEMO_PASSWORD },
-  env: { PORT: "3000", SEED_DEMO_DATA: "true" }, secretEnv: { JWT_SECRET: "jwt", DATABASE_URL: "dbu", DEMO_PASSWORD: "demo" } });
+  secrets: { jwt: env.JWT_SECRET, dbu: env.DATABASE_URL, demo: env.DEMO_PASSWORD, gwk: gatewayKey },
+  env: { PORT: "3000", SEED_DEMO_DATA: "true" }, secretEnv: { JWT_SECRET: "jwt", DATABASE_URL: "dbu", DEMO_PASSWORD: "demo", GATEWAY_SHARED_SECRET: "gwk" } });
 deploy({ name: "billing-mcp", port: 3002, entry: "dist/mcp/main.js", ingress: "external", env: { MCP_PORT: "3002", MCP_TRANSPORT: "http" } });
 deploy({ name: "billing-gateway", port: 3001, entry: "dist/gateway/main.js", ingress: "external",
-  secrets: { jwt: env.JWT_SECRET },
-  env: { GATEWAY_PORT: "3001", BILLING_API_URL: `https://${urls["billing-api"]}`, AGENT_URL: `https://${agentFqdnGuess}` }, secretEnv: { JWT_SECRET: "jwt" } });
+  secrets: { jwt: env.JWT_SECRET, gwk: gatewayKey },
+  env: { GATEWAY_PORT: "3001", BILLING_API_URL: `https://${urls["billing-api"]}`, AGENT_URL: `https://${agentFqdnGuess}` }, secretEnv: { JWT_SECRET: "jwt", GATEWAY_SHARED_SECRET: "gwk" } });
 deploy({ name: "billing-agent", port: 3003, entry: "dist/agent/main.js", ingress: "external",
   secrets: { jwt: env.JWT_SECRET, llm: env.LLM_API_KEY },
   env: { AGENT_PORT: "3003", GATEWAY_URL: `https://${urls["billing-gateway"]}`, GATEWAY_PUBLIC_URL: `https://${urls["billing-gateway"]}`, MCP_URL: `https://${urls["billing-mcp"]}/mcp`,
@@ -217,6 +219,10 @@ if (!flag("skip-verify")) {
     }
     const bill = await getJson(`${gw}/api/v1/bill?subscriberNo=1001&month=10&year=2026`);
     note("Public Query Bill through the gateway", bill.status === 200, `HTTP ${bill.status}`);
+    if (apiIngress === "external") {
+      const direct = await getJson(`${SCHEME}://${urls["billing-api"]}/api/v1/bill?subscriberNo=1001&month=10&year=2026`);
+      note("Billing API called directly (bypassing the gateway) -> 403", direct.status === 403 && direct.body?.error?.code === "GATEWAY_REQUIRED", `HTTP ${direct.status}`);
+    }
   } catch (e) { note("Gateway checks", false, e.message); }
 }
 

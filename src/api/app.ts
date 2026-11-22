@@ -1,4 +1,5 @@
 import cors from "@fastify/cors";
+import { createHash, timingSafeEqual } from "node:crypto";
 import jwt from "@fastify/jwt";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
@@ -62,10 +63,25 @@ const authErrors = {
 export interface ApiOptions {
   store: BillingStore;
   logger?: boolean;
+  /** When set, every request except /health must carry this value in `x-gateway-key` (only the API Gateway knows it). */
+  gatewayKey?: string;
 }
 
-export function buildApi({ store, logger = false }: ApiOptions) {
+const digest = (value: string) => createHash("sha256").update(value).digest();
+
+export function buildApi({ store, logger = false, gatewayKey }: ApiOptions) {
   const app = Fastify({ logger, ajv: { customOptions: { coerceTypes: "array", removeAdditional: false } } });
+
+  // Defence in depth: the API may have a public address (e.g. on Azure "express" environments), but only the gateway holds the key.
+  if (gatewayKey) {
+    app.addHook("onRequest", async (request, reply) => {
+      if (request.url.split("?")[0] === "/health") return;
+      const presented = request.headers["x-gateway-key"];
+      if (typeof presented !== "string" || !timingSafeEqual(digest(presented), digest(gatewayKey))) {
+        return reply.status(403).send({ error: { code: "GATEWAY_REQUIRED", message: "This service accepts requests only through the API Gateway" } });
+      }
+    });
+  }
 
   app.register(cors, { origin: true });
   app.register(jwt, { secret: jwtSecret(), sign: { expiresIn: JWT_EXPIRES_IN_SECONDS } });

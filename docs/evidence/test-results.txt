@@ -1,4 +1,4 @@
-# Test evidence - 2026-11-22T18:24Z
+# Test evidence - 2026-11-22T19:15Z
 
 ## npm run build (tsc strict): OK
 
@@ -9,19 +9,19 @@
 
  RUN  v3.2.7 /home/claude/se4458-ai-billing-assistant
 
- ✓ test/agent.test.ts (22 tests) 3529ms
- ✓ test/store.test.ts (11 tests) 663ms
- ✓ test/api.test.ts (29 tests) 379ms
- ✓ test/gateway.test.ts (15 tests) 350ms
- ✓ test/seed.test.ts (2 tests) 239ms
- ✓ test/llm.test.ts (10 tests) 17ms
- ✓ test/mcp.test.ts (14 tests) 26ms
+ ✓ test/agent.test.ts (22 tests) 3202ms
+ ✓ test/store.test.ts (11 tests) 662ms
+ ✓ test/seed.test.ts (2 tests) 231ms
+ ✓ test/gateway.test.ts (17 tests) 486ms
+ ✓ test/api.test.ts (29 tests) 346ms
+ ✓ test/mcp.test.ts (14 tests) 24ms
+ ✓ test/llm.test.ts (10 tests) 18ms
  ✓ test/pricing.test.ts (7 tests) 3ms
 
  Test Files  8 passed (8)
-      Tests  110 passed (110)
-   Start at  18:24:17
-   Duration  6.88s (transform 203ms, setup 0ms, collect 669ms, tests 5.21s, environment 1ms, prepare 297ms)
+      Tests  112 passed (112)
+   Start at  19:15:52
+   Duration  6.54s (transform 206ms, setup 0ms, collect 644ms, tests 4.97s, environment 1ms, prepare 265ms)
 
 
 
@@ -32,17 +32,17 @@
 
  RUN  v3.2.7 /home/claude/se4458-ai-billing-assistant
 
- ✓ test/agent.test.ts (22 tests) 3346ms
- ✓ test/store.test.ts (22 tests) 1714ms
- ✓ test/api.test.ts (29 tests) 379ms
- ✓ test/gateway.test.ts (15 tests) 358ms
- ✓ test/seed.test.ts (4 tests) 556ms
- ✓ test/mcp.test.ts (14 tests) 26ms
- ✓ test/llm.test.ts (10 tests) 16ms
+ ✓ test/agent.test.ts (22 tests) 3286ms
+ ✓ test/store.test.ts (22 tests) 1687ms
+ ✓ test/gateway.test.ts (17 tests) 503ms
+ ✓ test/api.test.ts (29 tests) 364ms
+ ✓ test/seed.test.ts (4 tests) 616ms
+ ✓ test/mcp.test.ts (14 tests) 31ms
+ ✓ test/llm.test.ts (10 tests) 25ms
  ✓ test/pricing.test.ts (7 tests) 3ms
 
  Test Files  8 passed (8)
-      Tests  123 passed (123)
-   Start at  18:24:24
-   Duration  8.14s (transform 213ms, setup 0ms, collect 704ms, tests 6.40s, environment 1ms, prepare 299ms)
+      Tests  125 passed (125)
+   Start at  19:15:59
+   Duration  8.32s (transform 232ms, setup 0ms, collect 752ms, tests 6.52s, environment 1ms, prepare 310ms)
 
