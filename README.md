@@ -84,7 +84,7 @@ Authenticate with the demo subscriber credentials:
 Invoke-RestMethod -Method Post -Uri 'http://localhost:3001/gateway/v1/auth/token' -ContentType 'application/json' -Body '{"subscriberNo":"1001","username":"subscriber1001","password":"change-me"}'
 ```
 
-Configure `DEMO_SUBSCRIBER_NO`, `DEMO_USERNAME`, `DEMO_PASSWORD`, and `JWT_SECRET` in `.env` for deployment. Use a strong password and strong JWT secret; never commit real secrets.
+Configure `DEMO_SUBSCRIBER_NO`, `DEMO_USERNAME`, `DEMO_PASSWORD`, and `JWT_SECRET` in `.env` locally. In Azure, provide them as secret-backed container environment variables. Use a strong password and JWT secret; never commit real secrets. Set `LLM_API_KEY` as a secret-backed variable to enable live OpenAI-compatible function calling; without it, the agent uses its deterministic fallback.
 
 Send the returned token as `Authorization: Bearer <token>` for agent, calculate, usage, detailed bill, and payment requests. Public bill summaries do not require a token.
 
@@ -145,7 +145,7 @@ The public deployment is hosted on Azure Container Apps:
 - Gateway OpenAPI spec: https://billing-gateway.redfield-d0ef7041.spaincentral.azurecontainerapps.io/gateway/v1/openapi.json
 - Public bill: https://billing-gateway.redfield-d0ef7041.spaincentral.azurecontainerapps.io/gateway/v1/bill?subscriberNo=1001&month=4&year=2025
 
-The API and gateway use Azure Container Apps and Neon PostgreSQL through `DATABASE_URL`. The agent starts its MCP stdio server as a separate child process from the deployed API container; a standalone stdio entry point is also available with `npm run mcp`. The images are stored in `se4458billingkutay.azurecr.io`, and secrets are supplied through Azure Container App secret references. Never commit `.env`, database passwords, JWT secrets, or API keys.
+The API and gateway use Azure Container Apps, with the API connecting to Neon PostgreSQL through the `DATABASE_URL` secret reference. Configure JWT, demo account, and optional LLM credentials as additional secret-backed container variables for the deployment mode you need. The agent starts its MCP stdio server as a separate child process from the deployed API container; a standalone stdio entry point is also available with `npm run mcp`. The images are stored in `se4458billingkutay.azurecr.io`. Never commit `.env`, database passwords, JWT secrets, or API keys.
 
 ## Gateway and authentication contract
 
