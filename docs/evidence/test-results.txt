@@ -1,0 +1,48 @@
+# Test evidence - 2026-11-22T17:05Z
+
+## npm run build (tsc strict): OK
+
+## `npm test` (no database, no live LLM)
+
+
+
+
+ RUN  v3.2.7 /home/claude/repo/se4458-ai-billing-assistant
+
+ ✓ test/agent.test.ts (21 tests) 3234ms
+ ✓ test/store.test.ts (11 tests) 690ms
+ ✓ test/seed.test.ts (2 tests) 233ms
+ ✓ test/api.test.ts (29 tests) 352ms
+ ✓ test/gateway.test.ts (15 tests) 345ms
+ ✓ test/mcp.test.ts (14 tests) 26ms
+ ✓ test/llm.test.ts (10 tests) 20ms
+ ✓ test/pricing.test.ts (7 tests) 3ms
+
+ Test Files  8 passed (8)
+      Tests  109 passed (109)
+   Start at  17:05:12
+   Duration  6.53s (transform 222ms, setup 0ms, collect 654ms, tests 4.90s, environment 1ms, prepare 283ms)
+
+
+
+## `TEST_DATABASE_URL=... npm test` (same suite + store/seed contracts against real PostgreSQL 16)
+
+
+
+
+ RUN  v3.2.7 /home/claude/repo/se4458-ai-billing-assistant
+
+ ✓ test/agent.test.ts (21 tests) 3245ms
+ ✓ test/store.test.ts (22 tests) 1660ms
+ ✓ test/api.test.ts (29 tests) 364ms
+ ✓ test/gateway.test.ts (15 tests) 338ms
+ ✓ test/seed.test.ts (4 tests) 557ms
+ ✓ test/mcp.test.ts (14 tests) 25ms
+ ✓ test/llm.test.ts (10 tests) 18ms
+ ✓ test/pricing.test.ts (7 tests) 3ms
+
+ Test Files  8 passed (8)
+      Tests  122 passed (122)
+   Start at  17:05:18
+   Duration  7.93s (transform 212ms, setup 0ms, collect 705ms, tests 6.21s, environment 1ms, prepare 297ms)
+

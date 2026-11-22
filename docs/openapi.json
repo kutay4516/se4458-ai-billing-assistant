@@ -1,0 +1,1369 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Mobile Provider Billing API",
+    "version": "1.0.0",
+    "description": "Versioned REST API (/api/v1) for usage, billing and simulated payments. Public clients reach it through the API Gateway."
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {}
+  },
+  "paths": {
+    "/api/v1/auth/token": {
+      "post": {
+        "summary": "Exchange subscriber credentials for a JWT",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subscriberNo",
+                  "password"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "subscriberNo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                    "description": "Subscriber number",
+                    "example": "1001"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "tokenType": {
+                      "type": "string"
+                    },
+                    "expiresIn": {
+                      "type": "integer"
+                    },
+                    "subscriberNo": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Validation error",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Invalid credentials",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/usage": {
+      "post": {
+        "summary": "Add Usage: +10 minutes of phone or +1 MB of internet",
+        "tags": [
+          "Usage"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subscriberNo",
+                  "month",
+                  "year",
+                  "usageType"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "subscriberNo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                    "description": "Subscriber number",
+                    "example": "1001"
+                  },
+                  "month": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12,
+                    "example": 10
+                  },
+                  "year": {
+                    "type": "integer",
+                    "minimum": 2000,
+                    "maximum": 2100,
+                    "example": 2026
+                  },
+                  "usageType": {
+                    "type": "string",
+                    "enum": [
+                      "Phone",
+                      "Internet"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "subscriberNo": {
+                      "type": "string"
+                    },
+                    "month": {
+                      "type": "integer"
+                    },
+                    "year": {
+                      "type": "integer"
+                    },
+                    "usageType": {
+                      "type": "string"
+                    },
+                    "added": {
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Validation error",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Missing or invalid JWT",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "JWT subscriber differs from the requested subscriber",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "JWT subscriber differs from the requested subscriber",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown subscriber",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Unknown subscriber",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bill/calculate": {
+      "post": {
+        "summary": "Calculate Bill: snapshot the period's usage into a persisted bill",
+        "tags": [
+          "Billing"
+        ],
+        "description": "Phone: first 1,000 minutes free, then $10 per started 1,000-minute block. Internet: $50 up to 20 GB, then $10 per started additional 10 GB block (1 GB = 1,000 MB).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subscriberNo",
+                  "month",
+                  "year"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "subscriberNo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                    "description": "Subscriber number",
+                    "example": "1001"
+                  },
+                  "month": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12,
+                    "example": 10
+                  },
+                  "year": {
+                    "type": "integer",
+                    "minimum": 2000,
+                    "maximum": 2100,
+                    "example": 2026
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "bill": {
+                      "type": "object",
+                      "properties": {
+                        "subscriberNo": {
+                          "type": "string"
+                        },
+                        "month": {
+                          "type": "integer"
+                        },
+                        "year": {
+                          "type": "integer"
+                        },
+                        "phoneMinutes": {
+                          "type": "number"
+                        },
+                        "internetMb": {
+                          "type": "number"
+                        },
+                        "internetGb": {
+                          "type": "number"
+                        },
+                        "phoneCharge": {
+                          "type": "number"
+                        },
+                        "internetBaseCharge": {
+                          "type": "number"
+                        },
+                        "internetOverageCharge": {
+                          "type": "number"
+                        },
+                        "internetCharge": {
+                          "type": "number"
+                        },
+                        "total": {
+                          "type": "number"
+                        },
+                        "paidAmount": {
+                          "type": "number"
+                        },
+                        "remainingBalance": {
+                          "type": "number"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PARTIAL",
+                            "PAID"
+                          ]
+                        },
+                        "calculatedAt": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Validation error",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Missing or invalid JWT",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "JWT subscriber differs from the requested subscriber",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "JWT subscriber differs from the requested subscriber",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown subscriber",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Unknown subscriber",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bill": {
+      "get": {
+        "summary": "Query Bill: total, paid amount, remaining balance and status (no authentication per assignment)",
+        "tags": [
+          "Billing"
+        ],
+        "description": "Public by assignment requirement. If an Authorization header is supplied it is validated and must belong to the same subscriber.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "example": "1001",
+            "in": "query",
+            "name": "subscriberNo",
+            "required": true,
+            "description": "Subscriber number"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "example": 10,
+            "in": "query",
+            "name": "month",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "example": 2026,
+            "in": "query",
+            "name": "year",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "subscriberNo": {
+                      "type": "string"
+                    },
+                    "month": {
+                      "type": "integer"
+                    },
+                    "year": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "paidAmount": {
+                      "type": "number"
+                    },
+                    "remainingBalance": {
+                      "type": "number"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "UNPAID",
+                        "PARTIAL",
+                        "PAID"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Validation error",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Missing or invalid JWT",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "JWT subscriber differs from the requested subscriber",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "JWT subscriber differs from the requested subscriber",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No calculated bill for the period",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "No calculated bill for the period",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bill/detailed": {
+      "get": {
+        "summary": "Query Bill Detailed: charge breakdown, usage (paged) and payments",
+        "tags": [
+          "Billing"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            },
+            "example": "1001",
+            "in": "query",
+            "name": "subscriberNo",
+            "required": true,
+            "description": "Subscriber number"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "example": 10,
+            "in": "query",
+            "name": "month",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "example": 2026,
+            "in": "query",
+            "name": "year",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "1-based page of usage records"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bill": {
+                      "type": "object",
+                      "properties": {
+                        "subscriberNo": {
+                          "type": "string"
+                        },
+                        "month": {
+                          "type": "integer"
+                        },
+                        "year": {
+                          "type": "integer"
+                        },
+                        "phoneMinutes": {
+                          "type": "number"
+                        },
+                        "internetMb": {
+                          "type": "number"
+                        },
+                        "internetGb": {
+                          "type": "number"
+                        },
+                        "phoneCharge": {
+                          "type": "number"
+                        },
+                        "internetBaseCharge": {
+                          "type": "number"
+                        },
+                        "internetOverageCharge": {
+                          "type": "number"
+                        },
+                        "internetCharge": {
+                          "type": "number"
+                        },
+                        "total": {
+                          "type": "number"
+                        },
+                        "paidAmount": {
+                          "type": "number"
+                        },
+                        "remainingBalance": {
+                          "type": "number"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PARTIAL",
+                            "PAID"
+                          ]
+                        },
+                        "calculatedAt": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "usage": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "usageType": {
+                                "type": "string"
+                              },
+                              "amount": {
+                                "type": "number"
+                              },
+                              "unit": {
+                                "type": "string"
+                              },
+                              "recordedAt": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "pageSize": {
+                          "type": "integer"
+                        },
+                        "totalItems": {
+                          "type": "integer"
+                        },
+                        "totalPages": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "payments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "transactionId": {
+                            "type": "string"
+                          },
+                          "subscriberNo": {
+                            "type": "string"
+                          },
+                          "month": {
+                            "type": "integer"
+                          },
+                          "year": {
+                            "type": "integer"
+                          },
+                          "amount": {
+                            "type": "number"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Validation error",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Missing or invalid JWT",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "JWT subscriber differs from the requested subscriber",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "JWT subscriber differs from the requested subscriber",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No calculated bill for the period",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "No calculated bill for the period",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pay": {
+      "post": {
+        "summary": "Pay Bill: record a simulated partial or full payment",
+        "tags": [
+          "Payments"
+        ],
+        "description": "No real card processing. Duplicate transaction IDs are rejected (409); amounts above the remaining balance are rejected (422).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subscriberNo",
+                  "month",
+                  "year",
+                  "amount",
+                  "transactionId"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "subscriberNo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                    "description": "Subscriber number",
+                    "example": "1001"
+                  },
+                  "month": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12,
+                    "example": 10
+                  },
+                  "year": {
+                    "type": "integer",
+                    "minimum": 2000,
+                    "maximum": 2100,
+                    "example": 2026
+                  },
+                  "amount": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 1000000,
+                    "example": 25.5
+                  },
+                  "transactionId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "paidAmount": {
+                      "type": "number"
+                    },
+                    "remainingBalance": {
+                      "type": "number"
+                    },
+                    "billStatus": {
+                      "type": "string"
+                    },
+                    "payment": {
+                      "type": "object",
+                      "properties": {
+                        "transactionId": {
+                          "type": "string"
+                        },
+                        "subscriberNo": {
+                          "type": "string"
+                        },
+                        "month": {
+                          "type": "integer"
+                        },
+                        "year": {
+                          "type": "integer"
+                        },
+                        "amount": {
+                          "type": "number"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "bill": {
+                      "type": "object",
+                      "properties": {
+                        "subscriberNo": {
+                          "type": "string"
+                        },
+                        "month": {
+                          "type": "integer"
+                        },
+                        "year": {
+                          "type": "integer"
+                        },
+                        "phoneMinutes": {
+                          "type": "number"
+                        },
+                        "internetMb": {
+                          "type": "number"
+                        },
+                        "internetGb": {
+                          "type": "number"
+                        },
+                        "phoneCharge": {
+                          "type": "number"
+                        },
+                        "internetBaseCharge": {
+                          "type": "number"
+                        },
+                        "internetOverageCharge": {
+                          "type": "number"
+                        },
+                        "internetCharge": {
+                          "type": "number"
+                        },
+                        "total": {
+                          "type": "number"
+                        },
+                        "paidAmount": {
+                          "type": "number"
+                        },
+                        "remainingBalance": {
+                          "type": "number"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "UNPAID",
+                            "PARTIAL",
+                            "PAID"
+                          ]
+                        },
+                        "calculatedAt": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Validation error",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Missing or invalid JWT",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "JWT subscriber differs from the requested subscriber",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "JWT subscriber differs from the requested subscriber",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No calculated bill",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "No calculated bill",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate transaction ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Duplicate transaction ID",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Amount exceeds balance / nothing due",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Amount exceeds balance / nothing due",
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Authentication"
+    },
+    {
+      "name": "Usage"
+    },
+    {
+      "name": "Billing"
+    },
+    {
+      "name": "Payments"
+    },
+    {
+      "name": "System"
+    }
+  ]
+}

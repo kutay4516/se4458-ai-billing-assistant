@@ -4,164 +4,178 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mobile Provider Billing Assistant</title>
-  <script src="/config.js"></script>
   <style>
-    :root { --ink:#17324d; --muted:#63758a; --cyan:#0d6680; --mint:#eaf7f6; --line:#d7e1e8; --white:#fff; }
+    :root { --ink:#17324d; --muted:#63758a; --brand:#0d6680; --line:#d7e1e8; --bg:#eef3f5; --mcp:#7a4bb0; --rest:#16718a; }
     * { box-sizing:border-box; }
-    body { margin:0; font-family:"Segoe UI",sans-serif; background:#eef3f5; color:var(--ink); }
-    main { width:min(980px, calc(100% - 32px)); margin:24px auto; }
-    header { background:var(--cyan); color:white; padding:18px 20px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; }
-    header h1 { font-size:22px; margin:0; }
-    .status { width:12px; height:12px; border-radius:50%; background:#7ee7ca; }
-    .panel { background:white; border:1px solid var(--line); border-radius:8px; padding:18px; margin-top:14px; }
-    label { display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:7px; }
-    .controls { display:grid; grid-template-columns:1fr 120px 120px 100px; gap:10px; }
-    input, select, button { height:42px; border:1px solid #bdccd6; border-radius:6px; font:inherit; }
-    input, select { padding:0 10px; width:100%; }
-    button { border:0; background:#16718a; color:white; padding:0 14px; cursor:pointer; font-weight:700; }
-    button:hover { background:#10576b; }
-    .answer { margin-top:14px; padding:14px; background:var(--mint); border-left:4px solid #20a39b; min-height:58px; }
-    .trace { display:grid; gap:8px; }
-    .trace-item { border:1px solid var(--line); border-radius:6px; padding:10px; background:#fbfdfe; }
-    .trace-item strong { color:#13768a; }
-    pre { white-space:pre-wrap; overflow-wrap:anywhere; margin:8px 0 0; font-size:12px; }
-    @media (max-width:700px) { .controls { grid-template-columns:1fr 1fr; } header h1 { font-size:18px; } }
+    body { margin:0; font:15px/1.45 "Segoe UI",system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+    main { width:min(1100px, calc(100% - 24px)); margin:16px auto; display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:14px; }
+    header { grid-column:1/-1; background:var(--brand); color:#fff; padding:14px 18px; border-radius:8px; display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    header h1 { margin:0; font-size:20px; }
+    header a { color:#cdeef6; margin-left:12px; font-size:13px; }
+    .panel { background:#fff; border:1px solid var(--line); border-radius:8px; padding:14px; }
+    h2 { margin:0 0 10px; font-size:13px; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; }
+    input, button { font:inherit; height:38px; border:1px solid #bdccd6; border-radius:6px; padding:0 10px; }
+    button { background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600; cursor:pointer; }
+    button:disabled { opacity:.5; cursor:default; }
+    button.secondary { background:#fff; color:var(--brand); }
+    #login { display:flex; gap:8px; flex-wrap:wrap; }
+    #login input { flex:1 1 140px; }
+    #chatlog { height:380px; overflow:auto; display:flex; flex-direction:column; gap:8px; padding:4px; background:#fafcfd; border:1px solid var(--line); border-radius:6px; margin-bottom:10px; }
+    .msg { max-width:88%; padding:8px 11px; border-radius:10px; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .msg.user { align-self:flex-end; background:#dff1f6; }
+    .msg.bot { align-self:flex-start; background:#fff; border:1px solid var(--line); }
+    .msg.sys { align-self:center; color:var(--muted); font-size:13px; background:none; }
+    .row { display:flex; gap:8px; }
+    .row input { flex:1; }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    .chips button { height:30px; font-size:13px; font-weight:500; }
+    .confirm { margin-top:6px; padding:10px; border:1px solid #e0b252; background:#fff8e6; border-radius:6px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .trace { max-height:560px; overflow:auto; display:flex; flex-direction:column; gap:8px; }
+    .turn { font-size:12px; color:var(--muted); margin-top:4px; }
+    .call { border:1px solid var(--line); border-radius:6px; padding:8px; background:#fbfdfe; }
+    .call b { font-size:13px; }
+    .tag { display:inline-block; font-size:11px; font-weight:700; color:#fff; border-radius:4px; padding:1px 6px; margin-right:6px; }
+    .tag.MCP { background:var(--mcp); } .tag.REST { background:var(--rest); }
+    pre { margin:6px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; font-size:11.5px; max-height:160px; overflow:auto; background:#f4f8fa; padding:6px; border-radius:4px; }
+    .status { font-size:13px; color:var(--muted); margin-top:8px; min-height:18px; }
+    @media (max-width:820px) { main { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
-  <main>
-    <header><h1>Mobile Provider Billing Assistant</h1><span class="status" title="Service available"></span></header>
-    <section class="panel">
-      <label for="subscriber">SUBSCRIBER / USERNAME</label>
-      <div class="controls">
-        <input id="subscriber" aria-label="Subscriber number" value="1001" />
-        <input id="username" aria-label="Username" value="subscriber1001" />
-        <input id="password" aria-label="Password" type="password" value="change-me" />
-        <button id="login" type="button">Login</button>
-      </div>
-      <label for="question" style="margin-top:14px">QUESTION</label>
-      <div class="controls">
-        <input id="question" value="Why is my internet charge higher this month?" />
-        <input id="month" type="number" aria-label="Billing month" min="1" max="12" value="4" />
-        <input id="year" type="number" aria-label="Billing year" value="2025" />
-        <button id="send">Ask</button>
-      </div>
-      <div id="answer" class="answer">Ask a policy or bill question.</div>
-    </section>
-    <section class="panel">
-      <label>WRITE ACTIONS - EXPLICIT CONFIRMATION REQUIRED</label>
-      <div class="controls">
-        <select id="usageType" aria-label="Usage type"><option>Phone</option><option>Internet</option></select>
-        <input id="usageAmount" type="number" aria-label="Usage amount or payment amount" min="1" value="100" />
-        <input id="transactionId" aria-label="Payment transaction ID" placeholder="Transaction ID" />
-        <button id="confirmWrite" type="button">Execute</button>
-      </div>
-      <div style="margin-top:10px"><label><input id="confirmed" type="checkbox" style="width:auto;height:auto" /> I confirm this simulated usage/payment action</label></div>
-      <div class="controls" style="margin-top:10px">
-        <button id="addUsage" type="button">Add Usage</button>
-        <button id="payBill" type="button">Pay Bill</button>
-        <div></div><div></div>
-      </div>
-      <div id="writeResult" class="answer" style="margin-top:10px">No write action executed.</div>
-    </section>
-    <section class="panel">
-      <label>AGENT TOOL EXECUTION TRACE</label>
-      <div id="trace" class="trace">No calls yet.</div>
-    </section>
-  </main>
-  <script>
-    const gatewayBase = window.BILLING_GATEWAY_BASE_URL || 'http://localhost:3001/gateway/v1';
-    const gatewayUrl = path => gatewayBase.replace(/\/$/, '') + path;
-    const send = document.querySelector('#send');
-    const question = document.querySelector('#question');
-    const trace = document.querySelector('#trace');
-    const answer = document.querySelector('#answer');
+<main>
+  <header>
+    <h1>Mobile Provider Billing Assistant</h1>
+    <span><a id="docsLink" href="#" target="_blank">Gateway routes</a><a id="swaggerLink" href="#" target="_blank">API OpenAPI</a></span>
+  </header>
 
-    async function ask() {
-      send.disabled = true;
-      answer.textContent = 'Thinking...';
-      trace.textContent = 'Executing tools...';
-      try {
-        const response = await authorizedFetch(gatewayUrl('/agent/question'), {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            subscriberNo: document.querySelector('#subscriber').value,
-            question: question.value,
-            month: Number(document.querySelector('#month').value),
-            year: Number(document.querySelector('#year').value),
-            confirmed: document.querySelector('#confirmed').checked
-          })
-        });
-        const data = await response.json();
-        answer.textContent = data.answer;
-        trace.innerHTML = '';
-        for (const item of data.trace || []) {
-          const block = document.createElement('div');
-          block.className = 'trace-item';
-          block.innerHTML = '<strong>' + escapeHtml(item.tool) + '</strong><pre></pre><pre></pre>';
-          block.querySelectorAll('pre')[0].textContent = 'INPUT: ' + JSON.stringify(item.input, null, 2);
-          block.querySelectorAll('pre')[1].textContent = 'RESULT: ' + JSON.stringify(item.result, null, 2);
-          trace.appendChild(block);
-        }
-        if (!data.trace?.length) trace.textContent = 'No tool calls.';
-      } catch (error) {
-        answer.textContent = 'The assistant could not reach the API.';
-        trace.textContent = String(error);
-      } finally {
-        send.disabled = false;
+  <section class="panel">
+    <h2>1 · Sign in</h2>
+    <form id="login">
+      <input id="subscriber" aria-label="Subscriber number" placeholder="Subscriber no" value="1001" autocomplete="username" />
+      <input id="password" aria-label="Password" type="password" placeholder="Password" autocomplete="current-password" />
+      <button type="submit">Sign in</button>
+    </form>
+    <div class="status" id="loginStatus">Not signed in.</div>
+
+    <h2 style="margin-top:14px">2 · Chat</h2>
+    <div id="chatlog" aria-live="polite"></div>
+    <form id="chatform" class="row">
+      <input id="message" aria-label="Message" placeholder="Ask about rules, your bill, or say &quot;Pay my bill&quot;" autocomplete="off" disabled />
+      <button id="send" type="submit" disabled>Send</button>
+    </form>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Tool trace (this answer)</h2>
+    <div id="trace" class="trace"><span class="status">Tool calls appear here: tool name, input, result.</span></div>
+  </section>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let gateway = '', token = '', conversationId = null;
+
+  const SAMPLES = [
+    'How much does extra internet cost?',
+    'What is my October 2026 bill?',
+    'Why is my October bill higher than September?',
+    'Pay my bill',
+  ];
+
+  async function init() {
+    const config = await (await fetch('/config.json')).json();
+    gateway = config.gatewayUrl.replace(/\/$/, '');
+    $('docsLink').href = gateway + '/gateway/routes';
+    $('swaggerLink').href = gateway + '/api/v1/openapi.json';
+    for (const text of SAMPLES) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'secondary'; b.textContent = text;
+      b.onclick = () => { $('message').value = text; $('chatform').requestSubmit(); };
+      $('chips').appendChild(b);
+    }
+  }
+
+  function addMessage(kind, text) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + kind; div.textContent = text;
+    $('chatlog').appendChild(div); $('chatlog').scrollTop = 1e9;
+    return div;
+  }
+
+  $('login').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    $('loginStatus').textContent = 'Signing in...';
+    try {
+      const res = await fetch(gateway + '/api/v1/auth/token', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ subscriberNo: $('subscriber').value.trim(), password: $('password').value }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || 'Sign-in failed');
+      token = data.token; conversationId = null;
+      $('loginStatus').textContent = 'Signed in as subscriber ' + data.subscriberNo + ' (token valid ' + Math.round(data.expiresIn / 60) + ' min).';
+      $('message').disabled = false; $('send').disabled = false; $('message').focus();
+      addMessage('sys', 'Signed in as ' + data.subscriberNo + '. Your identity comes from the token, not from what you type.');
+    } catch (error) { token = ''; $('loginStatus').textContent = String(error.message || error); }
+  });
+
+  function renderTrace(trace) {
+    const box = $('trace'); box.innerHTML = '';
+    if (!trace.length) { box.innerHTML = '<span class="status">No tools were called for this answer.</span>'; return; }
+    for (const entry of trace) {
+      const div = document.createElement('div'); div.className = 'call';
+      const head = document.createElement('div');
+      head.innerHTML = '<span class="tag ' + entry.via + '">' + entry.via + '</span><b></b>';
+      head.querySelector('b').textContent = '#' + entry.step + ' ' + entry.tool + (entry.endpoint ? '  →  ' + entry.endpoint : '') + (entry.status ? '  [' + entry.status + ']' : '') + '  (' + entry.durationMs + ' ms)';
+      div.appendChild(head);
+      if (entry.note) { const n = document.createElement('div'); n.className = 'turn'; n.textContent = entry.note; div.appendChild(n); }
+      for (const [label, value] of [['input', entry.input], ['result', entry.result]]) {
+        const pre = document.createElement('pre'); pre.textContent = label + ': ' + JSON.stringify(value, null, 2); div.appendChild(pre);
       }
+      box.appendChild(div);
     }
+  }
 
-    function escapeHtml(value) {
-      return String(value).replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char]));
-    }
-
-    async function authorizedFetch(url, options = {}) {
-      const subscriberNo = document.querySelector('#subscriber').value;
-      const tokenResponse = await fetch(gatewayUrl('/auth/token'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subscriberNo, username: document.querySelector('#username').value, password: document.querySelector('#password').value }) });
-      const tokenData = await tokenResponse.json();
-      if (!tokenResponse.ok || !tokenData.token) throw new Error('INVALID_CREDENTIALS');
-      options.headers = { 'content-type': 'application/json', authorization: 'Bearer ' + tokenData.token, ...(options.headers || {}) };
-      return fetch(url, options);
-    }
-
-    async function executeWrite(kind) {
-      const result = document.querySelector('#writeResult');
-      if (!document.querySelector('#confirmed').checked) {
-        result.textContent = 'Confirmation is required before a write or payment.';
-        return;
+  async function send(body) {
+    $('send').disabled = true;
+    const thinking = addMessage('sys', 'Thinking...');
+    try {
+      const res = await fetch(gateway + '/api/v1/agent/chat', {
+        method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
+        body: JSON.stringify({ ...body, conversationId }),
+      });
+      const data = await res.json();
+      thinking.remove();
+      if (!res.ok) { addMessage('sys', (data.error?.code || res.status) + ': ' + (data.error?.message || 'Request failed')); return; }
+      conversationId = data.conversationId;
+      const bubble = addMessage('bot', data.answer);
+      renderTrace(data.trace || []);
+      const scenario = document.createElement('div'); scenario.className = 'turn'; scenario.textContent = 'scenario: ' + data.scenario; bubble.appendChild(scenario);
+      if (data.pendingConfirmation) {
+        const p = data.pendingConfirmation;
+        const box = document.createElement('div'); box.className = 'confirm';
+        box.innerHTML = '<span></span>';
+        box.querySelector('span').textContent = 'Pay $' + p.amount.toFixed(2) + ' for ' + p.month + '/' + p.year + ' (simulated)?';
+        const yes = document.createElement('button'); yes.textContent = 'Confirm payment';
+        const no = document.createElement('button'); no.textContent = 'Cancel'; no.className = 'secondary';
+        yes.onclick = () => { box.remove(); addMessage('user', 'Yes, confirm.'); send({ message: 'Yes, confirm.', confirmActionId: p.actionId }); };
+        no.onclick = () => { box.remove(); addMessage('user', 'Cancel.'); send({ message: 'Cancel, do not pay.' }); };
+        box.append(yes, no); $('chatlog').appendChild(box); $('chatlog').scrollTop = 1e9;
       }
-      const subscriberNo = document.querySelector('#subscriber').value;
-      const month = Number(document.querySelector('#month').value);
-      const year = Number(document.querySelector('#year').value);
-      try {
-        let response;
-        if (kind === 'usage') {
-          response = await authorizedFetch(gatewayUrl('/usage'), { method: 'POST', body: JSON.stringify({ subscriberNo, month, year, usageType: document.querySelector('#usageType').value, amount: Number(document.querySelector('#usageAmount').value), confirmed: true }) });
-        } else {
-          const transactionId = document.querySelector('#transactionId').value.trim();
-          if (!transactionId) { result.textContent = 'A transaction ID is required.'; return; }
-          response = await authorizedFetch(gatewayUrl('/pay'), { method: 'POST', body: JSON.stringify({ subscriberNo, month, year, amount: Number(document.querySelector('#usageAmount').value), transactionId, confirmed: true }) });
-        }
-        const data = await response.json();
-        result.textContent = response.ok ? JSON.stringify(data, null, 2) : 'Rejected: ' + JSON.stringify(data);
-      } catch (error) { result.textContent = String(error); }
-    }
+    } catch (error) { thinking.remove(); addMessage('sys', 'Could not reach the gateway: ' + error); }
+    finally { $('send').disabled = false; }
+  }
 
-    document.querySelector('#login').addEventListener('click', async () => {
-      try {
-        await authorizedFetch(gatewayUrl('/bill/detailed?subscriberNo=' + encodeURIComponent(document.querySelector('#subscriber').value) + '&month=' + document.querySelector('#month').value + '&year=' + document.querySelector('#year').value));
-        document.querySelector('#writeResult').textContent = 'Login successful.';
-      } catch (error) {
-        document.querySelector('#writeResult').textContent = 'Login failed: ' + String(error.message || error);
-      }
-    });
+  $('chatform').addEventListener('submit', (event) => {
+    event.preventDefault();
+    const text = $('message').value.trim();
+    if (!text || !token) return;
+    $('message').value = '';
+    addMessage('user', text); send({ message: text });
+  });
 
-    send.addEventListener('click', ask);
-    question.addEventListener('keydown', event => { if (event.key === 'Enter') ask(); });
-    document.querySelector('#addUsage').addEventListener('click', () => executeWrite('usage'));
-    document.querySelector('#payBill').addEventListener('click', () => executeWrite('payment'));
-  </script>
+  init();
+</script>
 </body>
 </html>

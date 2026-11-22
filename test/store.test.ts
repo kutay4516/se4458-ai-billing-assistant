@@ -1,28 +1,21 @@
-import { describe, expect, it } from "vitest";
-import { BillingStore } from "../src/billing/store.js";
+import pg from "pg";
+import { MemoryBillingStore } from "../src/billing/memoryStore.js";
+import { PostgresBillingStore } from "../src/billing/postgresStore.js";
+import { describe } from "vitest";
+import { storeContract } from "./store.contract.js";
 
-describe("billing store", () => {
-  it("returns seed-independent usage and detailed totals", () => {
-    const store = new BillingStore();
-    store.addUsage({ subscriberNo: "1001", month: 4, year: 2025, usageType: "Phone", amount: 1200 });
-    const bill = store.calculateBill("1001", 4, 2025);
-    expect(bill.phoneCharge).toBe(10);
-    expect(bill.total).toBe(10);
-  });
+storeContract("in-memory", async () => new MemoryBillingStore());
 
-  it("rejects duplicate transaction IDs", () => {
-    const store = new BillingStore();
-    store.addUsage({ subscriberNo: "1001", month: 4, year: 2025, usageType: "Phone", amount: 1200 });
-    const payment = { subscriberNo: "1001", month: 4, year: 2025, amount: 10, transactionId: "tx-1" };
-    store.payBill(payment);
-    expect(() => store.payBill(payment)).toThrow("DUPLICATE_TRANSACTION");
+// Real PostgreSQL contract run: TEST_DATABASE_URL=postgresql://user:pass@localhost:5432/db npm test
+const url = process.env.TEST_DATABASE_URL;
+if (url) {
+  storeContract("PostgreSQL", async () => {
+    const pool = new pg.Pool({ connectionString: url });
+    await pool.query("DROP TABLE IF EXISTS payments, bills, usage_records, subscribers CASCADE");
+    const store = new PostgresBillingStore(pool);
+    await store.init();
+    return store;
   });
-
-  it("supports partial payment", () => {
-    const store = new BillingStore();
-    store.addUsage({ subscriberNo: "1001", month: 4, year: 2025, usageType: "Phone", amount: 2500 });
-    const result = store.payBill({ subscriberNo: "1001", month: 4, year: 2025, amount: 10, transactionId: "tx-2" });
-    expect(result.bill.remainingBalance).toBe(10);
-    expect(result.bill.status).toBe("PARTIAL");
-  });
-});
+} else {
+  describe.skip("BillingStore contract: PostgreSQL (set TEST_DATABASE_URL to run)", () => {});
+}

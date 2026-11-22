@@ -1,0 +1,12 @@
+Real-environment verification - 2026-11-22T16:43:30.363Z
+
+PASS  .env: LLM_API_KEY set  -  length 53
+PASS  .env: DATABASE_URL set (Neon/Postgres)  -  yes
+PASS  Neon: connection  -  db=neondb; tables: bills, payments, subscribers, usage_records
+PASS  LLM: key accepted by provider  -  HTTP 200
+PASS  LLM: chat call (gemini-3.5-flash-lite)  -  gemini-3.5-flash-lite: ok (answer: pong)
+PASS  Ports free: using 3100-3103  -  api 3100, gateway 3101, mcp 3102, agent 3103
+PASS  Stack: all four services healthy  -  api 3100, gateway 3101, mcp 3102, agent 3103
+PASS  API storage backend  -  PostgreSQL (Neon)
+PASS  E2E agent scenarios answered by the real LLM (no LLM_ERROR)  -  ok
+PASS  E2E demo ran (exit code 0)  -  exit 0; 19025 chars -> docs/evidence/e2e-transcript.md

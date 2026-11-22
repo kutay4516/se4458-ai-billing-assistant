@@ -1,3 +1,11 @@
+# docker compose up --build        (requires .env with JWT_SECRET and DEMO_PASSWORD; LLM_API_KEY for the chat)
+x-common: &common
+  build: .
+  restart: unless-stopped
+  environment: &env
+    NODE_ENV: production
+    JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (>=16 chars) in .env}
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -5,41 +13,58 @@ services:
       POSTGRES_DB: billing
       POSTGRES_USER: billing
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-billing}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d:ro
+    ports: ["5432:5432"]
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U billing"]
+      interval: 5s
+      retries: 10
 
   api:
-    build: .
+    <<: *common
+    command: ["node", "dist/api/main.js"]
     environment:
+      <<: *env
       PORT: 3000
-      JWT_SECRET: ${JWT_SECRET:-local-development-secret}
-      DEMO_SUBSCRIBER_NO: ${DEMO_SUBSCRIBER_NO:-1001}
-      DEMO_USERNAME: ${DEMO_USERNAME:-subscriber1001}
-      DEMO_PASSWORD: ${DEMO_PASSWORD:-change-me}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://billing:${POSTGRES_PASSWORD:-billing}@postgres:5432/billing}
-      GATEWAY_BASE_URL: ${GATEWAY_BASE_URL:-http://gateway:3001/gateway/v1}
-      GATEWAY_PUBLIC_URL: ${GATEWAY_PUBLIC_URL:-http://localhost:3001/gateway/v1}
-      LLM_API_KEY: ${LLM_API_KEY:-}
-      LLM_API_BASE_URL: ${LLM_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
-      LLM_MODEL: ${LLM_MODEL:-gemini-2.5-flash}
-    ports:
-      - "3000:3000"
-    depends_on:
-      - postgres
+      DATABASE_URL: postgresql://billing:${POSTGRES_PASSWORD:-billing}@postgres:5432/billing
+      SEED_DEMO_DATA: "true"
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?set DEMO_PASSWORD in .env}
+    ports: ["3000:3000"]
+    depends_on: { postgres: { condition: service_healthy } }
+
+  mcp:
+    <<: *common
+    command: ["node", "dist/mcp/main.js"]
+    environment:
+      MCP_PORT: 3002
+      MCP_TRANSPORT: http
+    ports: ["3002:3002"]
 
   gateway:
-    build: .
-    command: ["npm", "run", "gateway"]
+    <<: *common
+    command: ["node", "dist/gateway/main.js"]
     environment:
+      <<: *env
       GATEWAY_PORT: 3001
-      BILLING_API_BASE: http://api:3000
-    ports:
-      - "3001:3001"
-    depends_on:
-      - api
+      BILLING_API_URL: http://api:3000
+      AGENT_URL: http://agent:3003
+    ports: ["3001:3001"]
+    depends_on: [api, agent]
+
+  agent:
+    <<: *common
+    command: ["node", "dist/agent/main.js"]
+    environment:
+      <<: *env
+      AGENT_PORT: 3003
+      GATEWAY_URL: http://gateway:3001          # server-to-server: the agent's REST calls go through the gateway
+      GATEWAY_PUBLIC_URL: http://localhost:3001  # what the browser UI calls
+      MCP_URL: http://mcp:3002/mcp
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_API_BASE_URL: ${LLM_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
+      LLM_MODEL: ${LLM_MODEL:-gemini-3.5-flash}
+    ports: ["3003:3003"]
+    depends_on: [mcp]
 
 volumes:
   postgres_data:

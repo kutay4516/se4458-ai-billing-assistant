@@ -1,21 +1,31 @@
 {
   "name": "group-2-ai-billing-assistant",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js",
+    "start:api": "node dist/api/main.js",
+    "start:mcp": "node dist/mcp/main.js",
+    "start:gateway": "node dist/gateway/main.js",
+    "start:agent": "node dist/agent/main.js",
+    "dev": "node scripts/start-all.mjs",
+    "dev:api": "tsx src/api/main.ts",
+    "dev:mcp": "tsx src/mcp/main.ts",
+    "dev:gateway": "tsx src/gateway/main.ts",
+    "dev:agent": "tsx src/agent/main.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "mcp": "tsx src/mcp/server.ts",
-    "gateway": "tsx src/gateway/server.ts",
-    "lint": "eslint src test --ext .ts"
+    "openapi": "tsx scripts/export-openapi.ts",
+    "e2e": "tsx scripts/e2e-demo.ts",
+    "verify:real": "node scripts/verify-real.mjs",
+    "demo:reset": "tsx scripts/reset-demo.ts",
+    "deploy:azure": "node scripts/deploy-azure.mjs"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.1",
     "@fastify/jwt": "^9.1.0",
+    "@fastify/rate-limit": "^11.3.0",
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.2",
     "@modelcontextprotocol/sdk": "^1.17.5",
@@ -27,7 +37,6 @@
   "devDependencies": {
     "@types/node": "^22.15.30",
     "@types/pg": "^8.15.4",
-    "eslint": "^9.28.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.2.3"

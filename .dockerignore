@@ -1,8 +1,6 @@
-.env
-.env.*
-.git
 node_modules
 dist
+.git
+.env
 coverage
-test
-*.log
+docs/evidence
