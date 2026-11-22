@@ -1,6 +1,6 @@
 # Cloud deployment (Azure Container Apps)
 
-Deployed 2026-11-22T17:42:25.944Z - resource group `se4458-billing-rg`, environment `se4458-env`, registry `se4458billingkutay`, image `billing:20261122171325`.
+Deployed 2026-11-22T18:32:54.846Z - resource group `se4458-billing-rg`, environment `se4458-env`, registry `se4458billingkutay`, image `billing:20261122182711`.
 
 | Service | Ingress | URL |
 |---|---|---|
@@ -17,7 +17,7 @@ Demo login: subscriber `1001` / `1002`, password = the `DEMO_PASSWORD` configure
 ## Checks run by scripts/deploy-azure.mjs
 
 - PASS: Resource group / environment / registry ready - se4458-billing-rg / se4458-env / se4458billingkutay (redfield-d0ef7041.spaincentral.azurecontainerapps.io)
-- PASS: Image built - se4458billingkutay.azurecr.io/billing:20261122171325
+- PASS: Image built - se4458billingkutay.azurecr.io/billing:20261122182711
 - PASS: Deployed billing-api - external: billing-api.redfield-d0ef7041.spaincentral.azurecontainerapps.io
 - PASS: Deployed billing-mcp - external: billing-mcp.redfield-d0ef7041.spaincentral.azurecontainerapps.io
 - PASS: Deployed billing-gateway - external: billing-gateway.redfield-d0ef7041.spaincentral.azurecontainerapps.io

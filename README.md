@@ -237,6 +237,50 @@ Between runs, `npm run demo:reset -- --yes` deletes the demo subscribers' paymen
    (Each demo run reduces the demo bill's balance; `npm run demo:reset -- --yes` restores it.)
 5. **Unit tests** – `npm test` (no cloud, no database, no live LLM). **Swagger** – `<gateway>/docs`.
 
+### Screenshots (deployed system: Azure Container Apps, real Gemini, Neon PostgreSQL)
+
+**MCP-only scenario** – "How much does extra internet cost?": the LLM selected `search_billing_documentation`; the agent called the MCP server (result carries `document`, `documentId` and section references) and the answer cites `§ 3.2 Additional internet blocks`. No REST call was made (`scenario: mcp-only`).
+
+![MCP-only scenario with tool trace](docs/screenshots/01-mcp-only-extra-internet.png)
+
+**REST API-only scenario** – "What is my October 2026 bill?": the LLM selected `query_bill`; the agent called `GET /api/v1/bill` through the gateway (200) and the answer is grounded in the returned total, paid amount, remaining balance and status.
+
+![REST-only scenario with tool trace](docs/screenshots/02-rest-only-query-bill.png)
+
+**Combined MCP + REST scenario** – "Why is my October bill higher than September?": the LLM called `query_bill_detailed` twice (September and October, REST via the gateway) and `search_billing_documentation` twice (MCP, internet and phone pricing rules). The answer compares the real usage (900 min / 18 GB → $50 vs 2,300 min / 47 GB → $100) and cites `§ 2.2` and `§ 3.2` (`scenario: combined`).
+
+![Combined scenario: question and first REST calls](docs/screenshots/03a-combined-question-and-rest-trace.png)
+![Combined scenario: final answer with section references](docs/screenshots/03b-combined-answer.png)
+![Combined scenario trace: REST #2 and MCP #3](docs/screenshots/03c-combined-trace-rest-and-mcp.png)
+![Combined scenario trace: MCP #3 and #4](docs/screenshots/03d-combined-trace-mcp-calls.png)
+
+**Three distinct MCP retrieval tests** (each answer cites the guide sections returned by the MCP tool; no REST call):
+
+| Question | MCP query chosen by the LLM | Sections cited |
+|---|---|---|
+| "Can I pay my bill in parts?" | `pay in parts partial payment billing guide` | § 5.1, § 8.3 |
+| "What happens if I pay late?" | `late payment fee consequence late pay` | § 6.1, § 6.2, § 6.3 |
+| "How do I dispute a charge?" | `dispute a charge` | § 7.1, § 7.2 |
+
+![MCP retrieval: partial payments](docs/screenshots/04-mcp-search-partial-payments.png)
+![MCP retrieval: late payment](docs/screenshots/05-mcp-search-late-payment.png)
+![MCP retrieval: disputes](docs/screenshots/06-mcp-search-disputes.png)
+
+**Protected gateway route** – `GET /api/v1/bill/detailed` on the deployed gateway. Without a token the gateway answers `401 UNAUTHORIZED` (error envelope with `requestId` and the `x-gateway-route` header); with the JWT obtained from `POST /api/v1/auth/token` the same route returns the detailed bill.
+
+![Protected route without a token: 401](docs/screenshots/07a-gateway-protected-route-401.png)
+![Protected route with a JWT: 200](docs/screenshots/07b-gateway-protected-route-200.png)
+
+**Confirmed simulated payment** – "Pay $20 of my October 2026 bill": the agent first stages the payment (the trace shows only a pre-check `GET /api/v1/bill`, "Pay Bill NOT called yet", status `CONFIRMATION_REQUIRED`) and the UI asks for explicit confirmation. Only after "Yes, confirm" does the agent call `POST /api/v1/pay` through the gateway with a generated transaction ID: paid $20, remaining balance $80, bill status `PARTIAL`.
+
+![Payment staged, waiting for explicit confirmation](docs/screenshots/08a-payment-confirmation-required.png)
+![Payment executed after confirmation](docs/screenshots/08b-payment-confirmed.png)
+
+**Unit tests** – `npm test` runs without cloud, database or live LLM: 8 test files, 110 tests passed (agent scenarios, identity checks and the payment confirmation gate included).
+
+![npm test: start of the run](docs/screenshots/09a-unit-tests-run.png)
+![npm test: 110 tests passed](docs/screenshots/09b-unit-tests-result.png)
+
 ## 10. Cloud deployment
 
 The code ships as one Docker image (`Dockerfile`), four services selected by command, plus a managed PostgreSQL (Neon here; SQLite is not used).
