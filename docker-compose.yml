@@ -19,7 +19,10 @@ services:
       DEMO_SUBSCRIBER_NO: ${DEMO_SUBSCRIBER_NO:-1001}
       DEMO_USERNAME: ${DEMO_USERNAME:-subscriber1001}
       DEMO_PASSWORD: ${DEMO_PASSWORD:-change-me}
-      DATABASE_URL: postgresql://billing:${POSTGRES_PASSWORD:-billing}@postgres:5432/billing
+      DATABASE_URL: ${DATABASE_URL:-postgresql://billing:${POSTGRES_PASSWORD:-billing}@postgres:5432/billing}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_API_BASE_URL: ${LLM_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
+      LLM_MODEL: ${LLM_MODEL:-gemini-2.5-flash}
     ports:
       - "3000:3000"
     depends_on:
@@ -31,9 +34,6 @@ services:
     environment:
       GATEWAY_PORT: 3001
       BILLING_API_BASE: http://api:3000
-      LLM_API_KEY: ${LLM_API_KEY:-}
-      LLM_API_BASE_URL: ${LLM_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
-      LLM_MODEL: ${LLM_MODEL:-gemini-2.5-flash}
     ports:
       - "3001:3001"
     depends_on:
