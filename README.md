@@ -130,4 +130,12 @@ Verified locally:
 
 ## Cloud Deployment
 
-The Docker configuration can be deployed to Azure Container Apps, AWS ECS, or Google Cloud Run. Use the provided PostgreSQL service or a managed PostgreSQL instance and set `DATABASE_URL` plus a strong `JWT_SECRET`.
+The public deployment is hosted on Azure Container Apps:
+
+- API: https://billing-api.redfield-d0ef7041.spaincentral.azurecontainerapps.io
+- Swagger: https://billing-api.redfield-d0ef7041.spaincentral.azurecontainerapps.io/docs
+- Gateway: https://billing-gateway.redfield-d0ef7041.spaincentral.azurecontainerapps.io
+- Gateway health: https://billing-gateway.redfield-d0ef7041.spaincentral.azurecontainerapps.io/health
+- Public bill: https://billing-gateway.redfield-d0ef7041.spaincentral.azurecontainerapps.io/gateway/v1/bill?subscriberNo=1001&month=4&year=2025
+
+The API uses Neon PostgreSQL through `DATABASE_URL`. The images are stored in `se4458billingkutay.azurecr.io`, and secrets are supplied through Azure Container App secret references. Never commit `.env`, database passwords, JWT secrets, or API keys.
