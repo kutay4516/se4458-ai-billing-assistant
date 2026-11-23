@@ -11,6 +11,8 @@ the **agent** executes them and returns the results to the LLM for a grounded an
 | 3 | Transactional REST APIs + server database (PostgreSQL) | `src/api/`, `src/billing/`, `migrations/` |
 | 4 | API Gateway through which all REST requests are routed | `src/gateway/` |
 
+**Demo video (about 7 min):** [docs/demo-video.mp4](docs/demo-video.mp4) – the deployed gateway (Swagger UI, a protected route returning 401 without a token, the billing API refusing direct calls with 403), the deployed chat UI, the agent scenarios and the confirmed payment as documented with screenshots in this README, and `npm test` (112 tests).
+
 Documents: [Architecture + ER diagram](docs/architecture.md) · [OpenAPI (billing API)](docs/openapi.json) ·
 [OpenAPI (agent)](docs/openapi-agent.json) · [Test run evidence](docs/evidence/test-results.txt) ·
 [End-to-end transcript (real Gemini + Neon)](docs/evidence/e2e-transcript.md) ·
